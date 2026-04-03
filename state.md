@@ -3,7 +3,7 @@
 ## Fase actual
 
 - fase activa: `Fase 6 - Inteligencia, integraciones y salida`
-- estado global: `in_progress`
+- estado global: `ready_for_manual_review`
 - release objetivo: `release-operable-v1`
 
 ## Completado en esta iteracion
@@ -134,7 +134,9 @@
 
 ## Pendiente inmediato
 
-- rematar el repaso manual visual del backoffice sobre tenant demo arrancando por `Perfiles demo listos para repaso`, `Mapa de acceso actual`, `Control ACL del perfil activo`, `Progreso del repaso ACL` y `Permisos visibles` (incluyendo que los perfiles no visitados se vean en `pendiente` neutro), y completar despues todo el recorrido `Ir a ...` del `Repaso visual guiado` para detectar/corregir el ultimo hueco real de UX/copy antes de cierre vendible.
+- ✅ Puerta tecnica validada: typecheck, test, lint, build en verde
+- ✅ validate:release-operable-v1 ejecutado contra PostgreSQL real: flujo end-to-end (venta -> factura -> cobro -> tarea -> reserva) OK, ACL (owner -> manager -> viewer) OK
+- ⏳ Repaso manual visual en navegador: requiere acceso a navegador para validar UI ( propietario debe ejecutar este paso)
 
 ## Pendiente estructural de la release
 
@@ -156,7 +158,7 @@
 
 ## Siguiente paso logico
 
-Completar en navegador el repaso manual visual descrito en `docs/release-operable-v1-validation.md` sobre el tenant demo (incluyendo `owner -> viewer` y `owner -> operator` para confirmar `orden: revisar`, tarjetas en `revisar`, contador `0/3`, motivo especifico del desvio y pendientes en estado neutro cuando el orden va bien), cubrir luego el orden correcto `owner -> manager -> viewer` y aplicar el siguiente ajuste UX/copy real que aparezca.
+El siguiente paso requiere un humano con navegador: ejecutar el repaso manual visual del backoffice sobre tenant demo segun `docs/release-operable-v1-validation.md`, probando el flujo `owner -> manager -> viewer` y confirmando que la UI muestra los mensajes esperados (orden ok/revisar, tarjetas en estado correcto, contador y pendientes neutros).
 
 ## Criterio actual de cierre
 
