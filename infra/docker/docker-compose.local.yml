@@ -1,0 +1,20 @@
+services:
+  api:
+    image: node:22-alpine
+    working_dir: /workspace
+    command: sh -c "corepack enable && pnpm install && pnpm --filter @erptry/api dev"
+    volumes:
+      - ../../:/workspace
+    ports:
+      - "3001:3001"
+
+  web:
+    image: node:22-alpine
+    working_dir: /workspace
+    command: sh -c "corepack enable && pnpm install && pnpm --filter @erptry/web dev"
+    volumes:
+      - ../../:/workspace
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api

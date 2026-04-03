@@ -1,0 +1,28 @@
+{
+  "name": "erptry",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Base profesional para un ERP modular multiempresa.",
+  "packageManager": "pnpm@10.8.1",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "corepack pnpm -r --parallel --if-present dev",
+    "build": "corepack pnpm -r --if-present build",
+    "lint": "corepack pnpm -r --if-present lint",
+    "test": "corepack pnpm -r --if-present test",
+    "typecheck": "corepack pnpm -r --if-present typecheck",
+    "verify": "corepack pnpm typecheck && corepack pnpm test && corepack pnpm build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.24.0",
+    "@next/eslint-plugin-next": "^15.5.14",
+    "eslint": "^9.24.0",
+    "globals": "^16.0.0",
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.28.0",
+    "vitest": "^3.1.1"
+  }
+}
