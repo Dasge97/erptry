@@ -127,6 +127,19 @@ body {
   cursor: pointer;
 }
 
+.secondary-action--light {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.section-jump {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  text-decoration: none;
+}
+
 .login-panel {
   margin-top: 24px;
   display: grid;
@@ -229,6 +242,11 @@ body {
   display: grid;
   gap: 16px;
   padding-top: 10px;
+  scroll-margin-top: 24px;
+}
+
+.users-section--compact {
+  padding-top: 0;
 }
 
 .users-section__header h3 {
@@ -247,6 +265,64 @@ body {
   gap: 14px;
 }
 
+.users-grid--quad {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.analytics-card {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(217, 107, 59, 0.18), rgba(255, 255, 255, 0.06));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.analytics-card strong {
+  font-size: 1.7rem;
+}
+
+.analytics-card__label {
+  color: rgba(245, 239, 231, 0.72);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+}
+
+.analytics-panels {
+  align-items: start;
+}
+
+.action-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.action-plan-card {
+  background: linear-gradient(180deg, rgba(122, 198, 255, 0.18), rgba(255, 255, 255, 0.08));
+  border-color: rgba(122, 198, 255, 0.22);
+}
+
+.analytics-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.analytics-row--stacked {
+  grid-template-columns: 1fr;
+}
+
 .user-card {
   display: grid;
   gap: 8px;
@@ -256,6 +332,91 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.demo-profile-card {
+  align-content: start;
+}
+
+.demo-profile-card--active {
+  border-color: rgba(217, 107, 59, 0.4);
+  box-shadow: 0 0 0 1px rgba(217, 107, 59, 0.2);
+}
+
+.notification-card {
+  align-content: start;
+}
+
+.notification-pill--info {
+  background: rgba(122, 198, 255, 0.14);
+  border-color: rgba(122, 198, 255, 0.26);
+}
+
+.notification-pill--success {
+  background: rgba(102, 214, 171, 0.16);
+  border-color: rgba(102, 214, 171, 0.28);
+}
+
+.notification-pill--warning {
+  background: rgba(255, 196, 97, 0.18);
+  border-color: rgba(255, 196, 97, 0.3);
+}
+
+.notification-pill--critical {
+  background: rgba(255, 120, 120, 0.18);
+  border-color: rgba(255, 120, 120, 0.32);
+}
+
+.flow-card {
+  background: linear-gradient(180deg, rgba(217, 107, 59, 0.16), rgba(255, 255, 255, 0.08));
+}
+
+.flow-card--ready {
+  background: linear-gradient(180deg, rgba(102, 214, 171, 0.22), rgba(255, 255, 255, 0.08));
+}
+
+.flow-card--attention {
+  background: linear-gradient(180deg, rgba(255, 196, 97, 0.18), rgba(255, 255, 255, 0.08));
+}
+
+.flow-check-item {
+  align-content: start;
+}
+
+.flow-check-item--attention {
+  border-color: rgba(255, 196, 97, 0.24);
+}
+
+.flow-check-item--complete {
+  border-color: rgba(102, 214, 171, 0.22);
+}
+
+.flow-check-pill--complete {
+  background: rgba(102, 214, 171, 0.16);
+  border-color: rgba(102, 214, 171, 0.28);
+}
+
+.flow-check-pill--attention {
+  background: rgba(255, 196, 97, 0.18);
+  border-color: rgba(255, 196, 97, 0.3);
+}
+
+.review-card__meta {
+  margin-bottom: 2px;
+}
+
+.review-card__checks {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.review-card__check {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(245, 239, 231, 0.88);
+}
+
 .create-user-form {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -263,9 +424,34 @@ body {
   align-items: end;
 }
 
+.create-user-form--sales {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+}
+
+.create-user-form--employees {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .create-user-form label {
   display: grid;
   gap: 8px;
+}
+
+.sales-lines {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sales-line-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(120px, 0.8fr) auto;
+  gap: 12px;
+  align-items: end;
 }
 
 @media (max-width: 920px) {
@@ -273,7 +459,14 @@ body {
   .grid,
   .login-form,
   .create-user-form,
-  .users-grid {
+  .analytics-grid,
+  .action-plan-grid,
+  .users-grid,
+  .sales-line-row {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-row {
     grid-template-columns: 1fr;
   }
 

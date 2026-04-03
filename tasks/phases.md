@@ -83,3 +83,10 @@
 - client-panel;
 - plugin-system;
 - hardening operativo y release prep.
+
+## Regla de cierre operativa
+
+- la ejecucion continua actual apunta a `release-operable-v1`, no a cubrir todo el mapa modular sin limite;
+- modulos obligatorios para cerrar la release: `auth`, `users`, `roles-permissions`, `settings`, `multi-tenant`, `clients`, `products-services`, `sales`, `billing-invoicing`, `payments`, `employees`, `tasks-internal-work`, `reservations-scheduling`, `analytics`, `reports`, `notifications`, `logs-audit`;
+- modulos deseables pero no bloqueantes: `work-shifts`, `inventory`, `warehouses`, `providers`, `expenses`;
+- modulos fuera de alcance de esta release: `integrations`, `workflow-engine`, `document-management`, `tagging-categorization`, `search-engine`, `public-portal`, `client-panel`, `plugin-system`.

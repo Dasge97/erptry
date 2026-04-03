@@ -25,9 +25,9 @@ export async function getApiManifest() {
   } catch {
     return {
       name: 'ERPTRY',
-      headline: 'ERP modular para operaciones, ventas y gestion multiempresa.',
-      modules: [...fallbackSnapshot.capabilities],
-      priorities: ['bootstrap tecnico', 'nucleo de plataforma', 'circuito comercial']
+      headline: 'Backoffice operable para pymes de servicios con circuito cliente -> servicio -> venta -> factura -> cobro -> operacion interna.',
+      modules: [...fallbackSnapshot.capabilities, 'clients', 'products-services', 'sales', 'billing-invoicing', 'payments', 'employees', 'tasks-internal-work', 'reservations-scheduling', 'analytics', 'notifications', 'logs-audit'],
+      priorities: ['tenant demo operable', 'circuito comercial-financiero', 'trabajo interno y agenda', 'control y trazabilidad', 'repaso visual de cierre vendible']
     };
   }
 }

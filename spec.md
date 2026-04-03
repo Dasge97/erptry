@@ -231,6 +231,110 @@ logs/
 - `client-panel`
 - `plugin-system`
 
+### 7.1 Objetivo real para ejecucion continua
+
+La meta operativa del worker no sera "terminar todo el ERP" de forma indefinida ni cerrar una milestone documental de forma prematura. La referencia pasa a ser dejar un producto vendible para pymes de servicios sobre una primera release cerrada y verificable llamada `release-operable-v1`.
+
+Esto implica que el worker debe trabajar de forma progresiva y autocritica:
+
+- cada iteracion debe cuestionar si lo ya construido es suficientemente util, claro, robusto y mantenible para un cliente real;
+- si detecta fragilidad funcional, UX pobre, huecos de seguridad, deuda operativa o validacion insuficiente, debe priorizar endurecer antes de declarar cierre;
+- `DONE` no puede usarse para indicar solo que el alcance esta decidido o que la documentacion esta alineada;
+- el objetivo es un producto que una pyme de servicios pueda usar y por el que tenga sentido cobrar, no una demo interna que "parece completa".
+
+### 7.2 Alcance incluido en `release-operable-v1`
+
+La release `release-operable-v1` debe dejar operativo un ERP multi-tenant para pymes de servicios y gestion comercial con estos modulos obligatorios:
+
+- `auth`
+- `users`
+- `roles-permissions`
+- `settings`
+- `multi-tenant`
+- `clients`
+- `products-services`
+- `sales`
+- `billing-invoicing`
+- `payments`
+- `employees`
+- `tasks-internal-work`
+- `reservations-scheduling`
+- `analytics`
+- `reports`
+- `notifications`
+- `logs-audit`
+
+### 7.3 Modulos diferidos a la siguiente ola
+
+Los siguientes modulos quedan explicitamente fuera del cierre de `release-operable-v1` y pasan a la siguiente ola del roadmap:
+
+- `work-shifts`
+- `inventory`
+- `warehouses`
+- `providers`
+- `expenses`
+
+Motivo de la decision:
+
+- `release-operable-v1` ya cubre el circuito minimo operable para pymes de servicios y gestion comercial sin depender de fichajes, stock, compras ni gasto imputado;
+- estos modulos abren reglas adicionales de disponibilidad, movimientos, conciliacion y trazabilidad que exigen una segunda ola coherente en lugar de un cierre apresurado;
+- se prioriza cerrar con calidad el perimetro ya operativo antes de ampliar el alcance funcional.
+
+### 7.4 Fuera de alcance de `release-operable-v1`
+
+Quedan explicitamente fuera de esta release:
+
+- `work-shifts`
+- `inventory`
+- `warehouses`
+- `providers`
+- `expenses`
+- `integrations`
+- `workflow-engine`
+- `document-management`
+- `tagging-categorization`
+- `search-engine`
+- `public-portal`
+- `client-panel`
+- `plugin-system`
+
+### 7.5 Criterio global de cierre de `release-operable-v1`
+
+La release solo puede darse por cerrada cuando se cumplan todas estas condiciones:
+
+- todos los modulos obligatorios estan implementados al menos con flujo minimo operable;
+- cada modulo obligatorio tiene persistencia, API, UI minima o superficie operativa equivalente, permisos y documentacion alineada;
+- existen seeds o datos demo suficientes para recorrer el flujo principal de la release;
+- `typecheck`, `test`, `build` y `lint` terminan en verde;
+- el circuito principal puede demostrarse de extremo a extremo sobre un tenant demo;
+- el estado del proyecto deja claro que queda fuera de la release y que sigue despues.
+- la experiencia principal de backoffice permite operar sin depender de conocimiento interno del repositorio ni de flujos pensados solo para demo tecnica;
+- la seguridad, sesiones, permisos, despliegue y operacion minima no presentan huecos obvios incompatibles con vender a una pyme real.
+
+### 7.6 Definicion de terminado por modulo para la release
+
+Un modulo obligatorio solo puede marcarse como terminado si cumple como minimo:
+
+- modelo de datos y migraciones cerradas;
+- contratos, DTOs y endpoints o servicios definidos;
+- permisos y limites tenant explicitados;
+- seed o bootstrap para validacion funcional;
+- superficie minima en backoffice o canal operativo equivalente;
+- pruebas de integracion o smoke del flujo principal;
+- reflejo actualizado en `README.md`, `plan.md`, `state.md`, `tasks/current.md` y `tasks/backlog.md`.
+- revision critica minima de UX, errores y mantenibilidad sobre la implementacion ya hecha.
+
+### 7.7 Regla de no cierre prematuro
+
+Aunque todos los modulos obligatorios existan, el worker no puede cerrar la release mientras siga siendo razonable mejorar solidez, comprensibilidad, operatividad o experiencia para el caso real de una pyme de servicios.
+
+En particular, no debe marcar `DONE` si todavia falta cualquiera de estos bloques:
+
+- auditoria modulo a modulo del perimetro obligatorio;
+- endurecimiento del circuito principal de cliente -> servicio -> venta -> factura -> cobro -> operacion interna -> seguimiento;
+- validacion end-to-end sobre tenant demo sin depender de pasos manuales oscuros;
+- endurecimiento de seguridad y despliegue suficiente para una primera salida comercial controlada.
+
 ## 8. Contratos y limites esperados
 
 - cada modulo expone casos de uso concretos, no acceso libre a toda la persistencia;
@@ -250,6 +354,18 @@ Para considerar la base lista para evolucion profesional deben cumplirse estas c
 - despliegue objetivo descrito;
 - riesgos abiertos visibles;
 - estrategia de testing prevista.
+
+### 9.1 Matriz minima de validacion para `release-operable-v1`
+
+- validacion tecnica global: `lint`, `typecheck`, `test`, `build`;
+- validacion por vertical: happy path y edge cases basicos;
+- validacion multi-tenant: aislamiento entre organizaciones;
+- validacion de permisos: lectura, escritura y acciones restringidas;
+- validacion del circuito comercial-financiero: cliente -> catalogo -> venta -> factura -> cobro;
+- validacion operativa minima: empleados/tareas/agenda sobre tenant demo;
+- validacion de visibilidad y control: `notifications` y `logs-audit` coherentes sobre eventos sensibles del backoffice.
+- validacion de usabilidad minima: un operador nuevo puede completar los flujos principales sin leer el codigo;
+- validacion de endurecimiento: errores, estados vacios y permisos denegados dejan mensajes comprensibles y comportamiento seguro.
 
 ## 10. Riesgos principales detectados
 
@@ -297,4 +413,5 @@ Estado actual del nucleo:
 - el backoffice ya puede actualizar ajustes del tenant, reasignar roles y cerrar sesiones;
 - `clients` ya existe como primer vertical de negocio sobre la base multi-tenant;
 - `products-services` ya existe como segundo vertical para preparar `sales` y facturacion;
+- `employees` y `tasks-internal-work` ya existen como base operativa interna enlazando personas y trabajo interno por tenant;
 - falta cerrar migraciones de produccion, estrategia definitiva de sesiones y endurecimiento de credenciales.

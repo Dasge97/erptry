@@ -10,7 +10,24 @@ const DEFAULT_PERMISSIONS = [
   ['users.manage', 'Gestionar usuarios'],
   ['roles.manage', 'Gestionar roles'],
   ['settings.manage', 'Gestionar ajustes'],
-  ['analytics.view', 'Ver analitica']
+  ['sales.view', 'Ver ventas'],
+  ['sales.manage', 'Gestionar ventas'],
+  ['billing.view', 'Ver facturas'],
+  ['billing.manage', 'Gestionar facturas'],
+  ['payments.view', 'Ver cobros'],
+  ['payments.manage', 'Gestionar cobros'],
+  ['employees.view', 'Ver empleados'],
+  ['employees.manage', 'Gestionar empleados'],
+  ['tasks.view', 'Ver trabajo interno'],
+  ['tasks.manage', 'Gestionar trabajo interno'],
+  ['reservations.view', 'Ver agenda y reservas'],
+  ['reservations.manage', 'Gestionar agenda y reservas'],
+  ['analytics.view', 'Ver analitica'],
+  ['reports.view', 'Ver reportes exportables'],
+  ['notifications.view', 'Ver avisos internos'],
+  ['notifications.manage', 'Gestionar avisos internos'],
+  ['audit.view', 'Ver auditoria operativa'],
+  ['audit.manage', 'Gestionar auditoria operativa']
 ] as const;
 
 const ROLE_DEFINITIONS = [
@@ -19,6 +36,37 @@ const ROLE_DEFINITIONS = [
   ['manager', 'Manager'],
   ['operator', 'Operator'],
   ['viewer', 'Viewer']
+] as const;
+
+const DEMO_USERS = [
+  {
+    email: 'owner@erptry.local',
+    fullName: 'Owner Demo',
+    envPasswordKey: 'SEED_ADMIN_PASSWORD',
+    fallbackPassword: 'erptry1234',
+    roleCode: 'owner'
+  },
+  {
+    email: 'manager@erptry.local',
+    fullName: 'Manager Demo',
+    envPasswordKey: 'SEED_MANAGER_PASSWORD',
+    fallbackPassword: 'erptry1234',
+    roleCode: 'manager'
+  },
+  {
+    email: 'operator@erptry.local',
+    fullName: 'Operator Demo',
+    envPasswordKey: 'SEED_OPERATOR_PASSWORD',
+    fallbackPassword: 'erptry1234',
+    roleCode: 'operator'
+  },
+  {
+    email: 'viewer@erptry.local',
+    fullName: 'Viewer Demo',
+    envPasswordKey: 'SEED_VIEWER_PASSWORD',
+    fallbackPassword: 'erptry1234',
+    roleCode: 'viewer'
+  }
 ] as const;
 
 async function main() {
@@ -89,10 +137,10 @@ async function main() {
   const permissionByCode = new Map(permissions.map((permission) => [permission.code, permission]));
   const rolePermissions = new Map<string, string[]>([
     ['owner', DEFAULT_PERMISSIONS.map(([code]) => code)],
-    ['admin', ['tenant.manage', 'users.manage', 'roles.manage', 'settings.manage', 'analytics.view']],
-    ['manager', ['users.manage', 'analytics.view']],
-    ['operator', ['analytics.view']],
-    ['viewer', ['analytics.view']]
+    ['admin', ['tenant.manage', 'users.manage', 'roles.manage', 'settings.manage', 'sales.view', 'sales.manage', 'billing.view', 'billing.manage', 'payments.view', 'payments.manage', 'employees.view', 'employees.manage', 'tasks.view', 'tasks.manage', 'reservations.view', 'reservations.manage', 'analytics.view', 'reports.view', 'notifications.view', 'notifications.manage', 'audit.view', 'audit.manage']],
+    ['manager', ['users.manage', 'sales.view', 'sales.manage', 'billing.view', 'billing.manage', 'payments.view', 'payments.manage', 'employees.view', 'employees.manage', 'tasks.view', 'tasks.manage', 'reservations.view', 'reservations.manage', 'analytics.view', 'reports.view', 'notifications.view', 'notifications.manage', 'audit.view']],
+    ['operator', ['sales.view', 'billing.view', 'payments.view', 'employees.view', 'tasks.view', 'reservations.view', 'analytics.view', 'reports.view', 'notifications.view', 'audit.view']],
+    ['viewer', ['sales.view', 'billing.view', 'payments.view', 'employees.view', 'tasks.view', 'reservations.view', 'analytics.view', 'reports.view', 'notifications.view', 'audit.view']]
   ]);
 
   await Promise.all(
@@ -127,42 +175,71 @@ async function main() {
     })
   );
 
-  const ownerRole = roleByCode.get('owner');
+  const demoUsers = await Promise.all(
+    DEMO_USERS.map(async (demoUser) => {
+      const role = roleByCode.get(demoUser.roleCode);
 
-  if (!ownerRole) {
-    throw new Error('Owner role was not created');
-  }
-
-  const passwordHash = await bcrypt.hash(adminPassword, 10);
-
-  const admin = await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: {
-      fullName: 'Owner Demo',
-      tenantId: tenant.id,
-      passwordHash
-    },
-    create: {
-      email: adminEmail,
-      fullName: 'Owner Demo',
-      tenantId: tenant.id,
-      passwordHash
-    }
-  });
-
-  await prisma.userRole.upsert({
-    where: {
-      userId_roleId: {
-        userId: admin.id,
-        roleId: ownerRole.id
+      if (!role) {
+        throw new Error(`Role not found for demo user ${demoUser.email}`);
       }
-    },
-    update: {},
-    create: {
-      userId: admin.id,
-      roleId: ownerRole.id
-    }
-  });
+
+      const resolvedEmail = demoUser.roleCode === 'owner'
+        ? adminEmail
+        : demoUser.email;
+      const resolvedPassword = process.env[demoUser.envPasswordKey] ?? demoUser.fallbackPassword;
+      const passwordHash = await bcrypt.hash(
+        demoUser.roleCode === 'owner' ? adminPassword : resolvedPassword,
+        10
+      );
+
+      const user = await prisma.user.upsert({
+        where: { email: resolvedEmail },
+        update: {
+          fullName: demoUser.fullName,
+          tenantId: tenant.id,
+          passwordHash
+        },
+        create: {
+          email: resolvedEmail,
+          fullName: demoUser.fullName,
+          tenantId: tenant.id,
+          passwordHash
+        }
+      });
+
+      await prisma.userRole.deleteMany({
+        where: {
+          userId: user.id,
+          roleId: {
+            not: role.id
+          }
+        }
+      });
+
+      await prisma.userRole.upsert({
+        where: {
+          userId_roleId: {
+            userId: user.id,
+            roleId: role.id
+          }
+        },
+        update: {},
+        create: {
+          userId: user.id,
+          roleId: role.id
+        }
+      });
+
+      return [demoUser.roleCode, user] as const;
+    })
+  );
+
+  const demoUserByRole = new Map(demoUsers);
+  const admin = demoUserByRole.get('owner');
+
+  if (!admin) {
+    throw new Error('Owner demo user was not created');
+  }
 
   await prisma.session.deleteMany({
     where: {
@@ -248,6 +325,388 @@ async function main() {
       status: 'active',
       sku: 'PROD-001',
       notes: 'Material inicial del servicio de implantacion.'
+    }
+  });
+
+  await prisma.sale.upsert({
+    where: {
+      reference: 'SAL-BOOTSTRAP-001'
+    },
+    update: {
+      tenantId: tenant.id,
+      clientId: 'seed-client-acme',
+      title: 'Propuesta de implantacion inicial',
+      stage: 'won',
+      totalCents: 57000,
+      notes: 'Une cliente y catalogo dentro del primer flujo comercial real.',
+      lines: {
+        deleteMany: {},
+        create: [
+          {
+            id: 'seed-sale-line-1',
+            catalogItemId: 'seed-catalog-service-1',
+            quantity: 1,
+            unitPriceCents: 12000,
+            lineTotalCents: 12000
+          },
+          {
+            id: 'seed-sale-line-2',
+            catalogItemId: 'seed-catalog-product-1',
+            quantity: 1,
+            unitPriceCents: 45000,
+            lineTotalCents: 45000
+          }
+        ]
+      }
+    },
+    create: {
+      id: 'seed-sale-1',
+      tenantId: tenant.id,
+      clientId: 'seed-client-acme',
+      reference: 'SAL-BOOTSTRAP-001',
+      title: 'Propuesta de implantacion inicial',
+      stage: 'won',
+      totalCents: 57000,
+      notes: 'Une cliente y catalogo dentro del primer flujo comercial real.',
+      lines: {
+        create: [
+          {
+            id: 'seed-sale-line-1',
+            catalogItemId: 'seed-catalog-service-1',
+            quantity: 1,
+            unitPriceCents: 12000,
+            lineTotalCents: 12000
+          },
+          {
+            id: 'seed-sale-line-2',
+            catalogItemId: 'seed-catalog-product-1',
+            quantity: 1,
+            unitPriceCents: 45000,
+            lineTotalCents: 45000
+          }
+        ]
+      }
+    }
+  });
+
+  await prisma.invoice.upsert({
+    where: {
+      saleId: 'seed-sale-1'
+    },
+    update: {
+      tenantId: tenant.id,
+      clientId: 'seed-client-acme',
+      reference: 'INV-BOOTSTRAP-001',
+      status: 'issued',
+      dueDate: new Date('2026-04-30T00:00:00.000Z'),
+      issuedAt: new Date('2026-04-03T09:00:00.000Z'),
+      subtotalCents: 57000,
+      totalCents: 57000,
+      notes: 'Factura inicial generada desde la propuesta bootstrap.',
+      lines: {
+        deleteMany: {},
+        create: [
+          {
+            id: 'seed-invoice-line-1',
+            catalogItemId: 'seed-catalog-service-1',
+            description: 'Consultoria inicial',
+            kind: 'service',
+            quantity: 1,
+            unitPriceCents: 12000,
+            lineTotalCents: 12000
+          },
+          {
+            id: 'seed-invoice-line-2',
+            catalogItemId: 'seed-catalog-product-1',
+            description: 'Kit de implantacion',
+            kind: 'product',
+            quantity: 1,
+            unitPriceCents: 45000,
+            lineTotalCents: 45000
+          }
+        ]
+      }
+    },
+    create: {
+      id: 'seed-invoice-1',
+      tenantId: tenant.id,
+      saleId: 'seed-sale-1',
+      clientId: 'seed-client-acme',
+      reference: 'INV-BOOTSTRAP-001',
+      status: 'issued',
+      dueDate: new Date('2026-04-30T00:00:00.000Z'),
+      issuedAt: new Date('2026-04-03T09:00:00.000Z'),
+      subtotalCents: 57000,
+      totalCents: 57000,
+      notes: 'Factura inicial generada desde la propuesta bootstrap.',
+      lines: {
+        create: [
+          {
+            id: 'seed-invoice-line-1',
+            catalogItemId: 'seed-catalog-service-1',
+            description: 'Consultoria inicial',
+            kind: 'service',
+            quantity: 1,
+            unitPriceCents: 12000,
+            lineTotalCents: 12000
+          },
+          {
+            id: 'seed-invoice-line-2',
+            catalogItemId: 'seed-catalog-product-1',
+            description: 'Kit de implantacion',
+            kind: 'product',
+            quantity: 1,
+            unitPriceCents: 45000,
+            lineTotalCents: 45000
+          }
+        ]
+      }
+    }
+  });
+
+  await prisma.payment.upsert({
+    where: {
+      reference: 'PAY-BOOTSTRAP-001'
+    },
+    update: {
+      tenantId: tenant.id,
+      invoiceId: 'seed-invoice-1',
+      status: 'confirmed',
+      method: 'bank_transfer',
+      amountCents: 20000,
+      receivedAt: new Date('2026-04-10T10:00:00.000Z'),
+      notes: 'Cobro parcial inicial para validar pagos sobre factura.'
+    },
+    create: {
+      id: 'seed-payment-1',
+      tenantId: tenant.id,
+      invoiceId: 'seed-invoice-1',
+      reference: 'PAY-BOOTSTRAP-001',
+      status: 'confirmed',
+      method: 'bank_transfer',
+      amountCents: 20000,
+      receivedAt: new Date('2026-04-10T10:00:00.000Z'),
+      notes: 'Cobro parcial inicial para validar pagos sobre factura.'
+    }
+  });
+
+  await prisma.employee.upsert({
+    where: {
+      tenantId_employeeCode: {
+        tenantId: tenant.id,
+        employeeCode: 'EMP-001'
+      }
+    },
+    update: {
+      linkedUserId: admin.id,
+      fullName: 'Owner Demo',
+      workEmail: admin.email,
+      phone: '600000111',
+      department: 'Direccion',
+      jobTitle: 'Founder / General Manager',
+      employmentType: 'full_time',
+      status: 'active',
+      startDate: new Date('2026-04-01T00:00:00.000Z'),
+      notes: 'Empleado semilla para enlazar personas internas con usuarios del tenant.'
+    },
+    create: {
+      id: 'seed-employee-1',
+      tenantId: tenant.id,
+      linkedUserId: admin.id,
+      employeeCode: 'EMP-001',
+      fullName: 'Owner Demo',
+      workEmail: admin.email,
+      phone: '600000111',
+      department: 'Direccion',
+      jobTitle: 'Founder / General Manager',
+      employmentType: 'full_time',
+      status: 'active',
+      startDate: new Date('2026-04-01T00:00:00.000Z'),
+      notes: 'Empleado semilla para enlazar personas internas con usuarios del tenant.'
+    }
+  });
+
+  await prisma.internalTask.upsert({
+    where: {
+      tenantId_taskCode: {
+        tenantId: tenant.id,
+        taskCode: 'TASK-BOOT-001'
+      }
+    },
+    update: {
+      title: 'Preparar arranque de servicio para Acme',
+      description: 'Tarea semilla enlazada a la venta ganada para abrir la operacion interna sobre el cliente demo.',
+      saleId: 'seed-sale-1',
+      assigneeEmployeeId: 'seed-employee-1',
+      createdByUserId: admin.id,
+      status: 'in_progress',
+      priority: 'high',
+      dueDate: new Date('2026-04-20T00:00:00.000Z'),
+      completedAt: null
+    },
+    create: {
+      id: 'seed-internal-task-1',
+      tenantId: tenant.id,
+      taskCode: 'TASK-BOOT-001',
+      title: 'Preparar arranque de servicio para Acme',
+      description: 'Tarea semilla enlazada a la venta ganada para abrir la operacion interna sobre el cliente demo.',
+      saleId: 'seed-sale-1',
+      assigneeEmployeeId: 'seed-employee-1',
+      createdByUserId: admin.id,
+      status: 'in_progress',
+      priority: 'high',
+      dueDate: new Date('2026-04-20T00:00:00.000Z'),
+      completedAt: null
+    }
+  });
+
+  await prisma.reservation.upsert({
+    where: {
+      tenantId_reservationCode: {
+        tenantId: tenant.id,
+        reservationCode: 'RSV-BOOT-001'
+      }
+    },
+    update: {
+      title: 'Kickoff operativo con Acme',
+      notes: 'Reserva semilla enlazada a la tarea de arranque para validar agenda real y reglas anti-solapamiento.',
+      location: 'Oficinas Acme',
+      assigneeEmployeeId: 'seed-employee-1',
+      createdByUserId: admin.id,
+      internalTaskId: 'seed-internal-task-1',
+      status: 'confirmed',
+      startAt: new Date('2026-04-21T09:00:00.000Z'),
+      endAt: new Date('2026-04-21T10:30:00.000Z')
+    },
+    create: {
+      id: 'seed-reservation-1',
+      tenantId: tenant.id,
+      reservationCode: 'RSV-BOOT-001',
+      title: 'Kickoff operativo con Acme',
+      notes: 'Reserva semilla enlazada a la tarea de arranque para validar agenda real y reglas anti-solapamiento.',
+      location: 'Oficinas Acme',
+      assigneeEmployeeId: 'seed-employee-1',
+      createdByUserId: admin.id,
+      internalTaskId: 'seed-internal-task-1',
+      status: 'confirmed',
+      startAt: new Date('2026-04-21T09:00:00.000Z'),
+      endAt: new Date('2026-04-21T10:30:00.000Z')
+    }
+  });
+
+  await prisma.notification.upsert({
+    where: { id: 'seed-notification-1' },
+    update: {
+      tenantId: tenant.id,
+      type: 'finance',
+      severity: 'warning',
+      title: 'Factura bootstrap con saldo pendiente',
+      message: 'INV-BOOTSTRAP-001 mantiene 370.00 EUR pendientes tras el primer cobro.',
+      resourceType: 'invoice',
+      resourceId: 'seed-invoice-1',
+      readAt: null,
+      createdAt: new Date('2026-04-10T10:05:00.000Z')
+    },
+    create: {
+      id: 'seed-notification-1',
+      tenantId: tenant.id,
+      type: 'finance',
+      severity: 'warning',
+      title: 'Factura bootstrap con saldo pendiente',
+      message: 'INV-BOOTSTRAP-001 mantiene 370.00 EUR pendientes tras el primer cobro.',
+      resourceType: 'invoice',
+      resourceId: 'seed-invoice-1',
+      readAt: null,
+      createdAt: new Date('2026-04-10T10:05:00.000Z')
+    }
+  });
+
+  await prisma.notification.upsert({
+    where: { id: 'seed-notification-2' },
+    update: {
+      tenantId: tenant.id,
+      type: 'reminder',
+      severity: 'info',
+      title: 'Reserva inicial confirmada',
+      message: 'RSV-BOOT-001 queda lista para la visita operativa del 21/04.',
+      resourceType: 'reservation',
+      resourceId: 'seed-reservation-1',
+      readAt: new Date('2026-04-15T08:30:00.000Z'),
+      createdAt: new Date('2026-04-15T08:00:00.000Z')
+    },
+    create: {
+      id: 'seed-notification-2',
+      tenantId: tenant.id,
+      type: 'reminder',
+      severity: 'info',
+      title: 'Reserva inicial confirmada',
+      message: 'RSV-BOOT-001 queda lista para la visita operativa del 21/04.',
+      resourceType: 'reservation',
+      resourceId: 'seed-reservation-1',
+      readAt: new Date('2026-04-15T08:30:00.000Z'),
+      createdAt: new Date('2026-04-15T08:00:00.000Z')
+    }
+  });
+
+  await prisma.auditLog.upsert({
+    where: { id: 'seed-audit-1' },
+    update: {
+      tenantId: tenant.id,
+      actorUserId: admin.id,
+      actorName: admin.fullName,
+      actorEmail: admin.email,
+      type: 'activity',
+      severity: 'success',
+      action: 'user.create',
+      resourceType: 'user',
+      resourceId: admin.id,
+      summary: 'Owner Demo ha consolidado el usuario owner inicial del tenant.',
+      createdAt: new Date('2026-04-03T09:15:00.000Z')
+    },
+    create: {
+      id: 'seed-audit-1',
+      tenantId: tenant.id,
+      actorUserId: admin.id,
+      actorName: admin.fullName,
+      actorEmail: admin.email,
+      type: 'activity',
+      severity: 'success',
+      action: 'user.create',
+      resourceType: 'user',
+      resourceId: admin.id,
+      summary: 'Owner Demo ha consolidado el usuario owner inicial del tenant.',
+      createdAt: new Date('2026-04-03T09:15:00.000Z')
+    }
+  });
+
+  await prisma.auditLog.upsert({
+    where: { id: 'seed-audit-2' },
+    update: {
+      tenantId: tenant.id,
+      actorUserId: admin.id,
+      actorName: admin.fullName,
+      actorEmail: admin.email,
+      type: 'finance',
+      severity: 'warning',
+      action: 'invoice.create',
+      resourceType: 'invoice',
+      resourceId: 'seed-invoice-1',
+      summary: 'Owner Demo ha emitido la factura bootstrap INV-BOOTSTRAP-001 con saldo pendiente.',
+      createdAt: new Date('2026-04-10T10:00:00.000Z')
+    },
+    create: {
+      id: 'seed-audit-2',
+      tenantId: tenant.id,
+      actorUserId: admin.id,
+      actorName: admin.fullName,
+      actorEmail: admin.email,
+      type: 'finance',
+      severity: 'warning',
+      action: 'invoice.create',
+      resourceType: 'invoice',
+      resourceId: 'seed-invoice-1',
+      summary: 'Owner Demo ha emitido la factura bootstrap INV-BOOTSTRAP-001 con saldo pendiente.',
+      createdAt: new Date('2026-04-10T10:00:00.000Z')
     }
   });
 

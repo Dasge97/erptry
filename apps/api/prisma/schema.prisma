@@ -12,8 +12,16 @@ model Tenant {
   slug      String    @unique
   name      String
   plan      TenantPlan @default(growth)
+  auditLogs AuditLog[]
   clients   Client[]
   catalogItems CatalogItem[]
+  employees Employee[]
+  internalTasks InternalTask[]
+  reservations Reservation[]
+  notifications Notification[]
+  sales     Sale[]
+  invoices  Invoice[]
+  payments  Payment[]
   users     User[]
   sessions  Session[]
   settings  TenantSetting[]
@@ -31,6 +39,8 @@ model CatalogItem {
   status      CatalogItemStatus @default(active)
   sku         String?
   notes       String?
+  saleLines   SaleLine[]
+  invoiceLines InvoiceLine[]
   tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
@@ -46,11 +56,107 @@ model Client {
   phone       String?
   segment     String   @default("general")
   notes       String?
+  sales       Sale[]
+   invoices    Invoice[]
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([tenantId, fullName])
+}
+
+model Sale {
+  id         String     @id
+  tenantId   String
+  clientId   String
+  reference  String     @unique
+  title      String
+  stage      SaleStage  @default(draft)
+  totalCents Int
+  notes      String?
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client     Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  invoice    Invoice?
+  internalTasks InternalTask[]
+  lines      SaleLine[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([tenantId, stage, createdAt])
+  @@index([clientId, createdAt])
+}
+
+model SaleLine {
+  id             String      @id
+  saleId         String
+  catalogItemId  String
+  quantity       Int
+  unitPriceCents Int
+  lineTotalCents Int
+  sale           Sale        @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  catalogItem    CatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Restrict)
+
+  @@index([saleId])
+  @@index([catalogItemId])
+}
+
+model Invoice {
+  id            String        @id
+  tenantId      String
+  saleId        String        @unique
+  clientId      String
+  reference     String        @unique
+  status        InvoiceStatus @default(issued)
+  dueDate       DateTime
+  issuedAt      DateTime
+  subtotalCents Int
+  totalCents    Int
+  notes         String?
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sale          Sale          @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  lines         InvoiceLine[]
+  payments      Payment[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([tenantId, status, issuedAt])
+  @@index([clientId, issuedAt])
+}
+
+model InvoiceLine {
+  id             String      @id
+  invoiceId      String
+  catalogItemId  String
+  description    String
+  kind           CatalogItemKind
+  quantity       Int
+  unitPriceCents Int
+  lineTotalCents Int
+  invoice        Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  catalogItem    CatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@index([catalogItemId])
+}
+
+model Payment {
+  id          String        @id
+  tenantId    String
+  invoiceId   String
+  reference   String        @unique
+  status      PaymentStatus @default(confirmed)
+  method      PaymentMethod
+  amountCents Int
+  receivedAt  DateTime
+  notes       String?
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice     Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([tenantId, status, receivedAt])
+  @@index([invoiceId, receivedAt])
 }
 
 model TenantSetting {
@@ -73,10 +179,132 @@ model User {
   status       UserStatus  @default(active)
   tenantId     String
   tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee     Employee?
+  auditLogs    AuditLog[]
+  createdInternalTasks InternalTask[] @relation("InternalTaskCreatedBy")
+  createdReservations Reservation[] @relation("ReservationCreatedBy")
   roles        UserRole[]
   sessions     Session[]
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
+}
+
+model Employee {
+  id             String                 @id
+  tenantId       String
+  linkedUserId   String?                @unique
+  employeeCode   String
+  fullName       String
+  workEmail      String?
+  phone          String?
+  department     String
+  jobTitle       String
+  employmentType EmployeeEmploymentType @default(full_time)
+  status         EmployeeStatus         @default(active)
+  startDate      DateTime
+  notes          String?
+  tenant         Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  linkedUser     User?                  @relation(fields: [linkedUserId], references: [id], onDelete: SetNull)
+  internalTasks  InternalTask[]
+  reservations   Reservation[]
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@unique([tenantId, employeeCode])
+  @@index([tenantId, status, startDate])
+  @@index([tenantId, department])
+}
+
+model InternalTask {
+  id               String               @id
+  tenantId         String
+  taskCode         String
+  title            String
+  description      String?
+   saleId           String?
+  assigneeEmployeeId String
+  createdByUserId  String
+  status           InternalTaskStatus   @default(todo)
+  priority         InternalTaskPriority @default(medium)
+  dueDate          DateTime?
+  completedAt      DateTime?
+  reservations     Reservation[]
+  tenant           Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sale             Sale?                @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  assigneeEmployee Employee             @relation(fields: [assigneeEmployeeId], references: [id], onDelete: Cascade)
+  createdByUser    User                 @relation("InternalTaskCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@unique([tenantId, taskCode])
+  @@index([tenantId, status, priority])
+  @@index([saleId])
+  @@index([assigneeEmployeeId, status])
+  @@index([createdByUserId, createdAt])
+}
+
+model Reservation {
+  id               String            @id
+  tenantId         String
+  reservationCode  String
+  title            String
+  notes            String?
+  location         String?
+  assigneeEmployeeId String
+  createdByUserId  String
+  internalTaskId   String?
+  status           ReservationStatus @default(booked)
+  startAt          DateTime
+  endAt            DateTime
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assigneeEmployee Employee          @relation(fields: [assigneeEmployeeId], references: [id], onDelete: Cascade)
+  createdByUser    User              @relation("ReservationCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  internalTask     InternalTask?     @relation(fields: [internalTaskId], references: [id], onDelete: SetNull)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@unique([tenantId, reservationCode])
+  @@index([tenantId, startAt, status])
+  @@index([assigneeEmployeeId, startAt, endAt])
+  @@index([internalTaskId])
+}
+
+model Notification {
+  id           String               @id
+  tenantId     String
+  type         NotificationType
+  severity     NotificationSeverity @default(info)
+  title        String
+  message      String
+  resourceType String?
+  resourceId   String?
+  readAt       DateTime?
+  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime             @default(now())
+
+  @@index([tenantId, readAt, createdAt])
+  @@index([tenantId, type, createdAt])
+}
+
+model AuditLog {
+  id          String               @id
+  tenantId    String
+  actorUserId String?
+  actorName   String
+  actorEmail  String
+  type        NotificationType
+  severity    NotificationSeverity @default(info)
+  action      String
+  resourceType String?
+  resourceId  String?
+  summary     String
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorUser   User?                @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  createdAt   DateTime             @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, resourceType, createdAt])
+  @@index([tenantId, action, createdAt])
 }
 
 model Role {
@@ -152,4 +380,76 @@ enum CatalogItemKind {
 enum CatalogItemStatus {
   active
   archived
+}
+
+enum SaleStage {
+  draft
+  sent
+  won
+  lost
+}
+
+enum InvoiceStatus {
+  draft
+  issued
+  paid
+  void
+}
+
+enum PaymentStatus {
+  pending
+  confirmed
+  failed
+}
+
+enum PaymentMethod {
+  cash
+  card
+  bank_transfer
+}
+
+enum EmployeeEmploymentType {
+  full_time
+  part_time
+  contractor
+}
+
+enum EmployeeStatus {
+  active
+  on_leave
+  inactive
+}
+
+enum InternalTaskStatus {
+  todo
+  in_progress
+  blocked
+  done
+}
+
+enum InternalTaskPriority {
+  low
+  medium
+  high
+}
+
+enum ReservationStatus {
+  booked
+  confirmed
+  completed
+  cancelled
+}
+
+enum NotificationType {
+  activity
+  reminder
+  finance
+  alert
+}
+
+enum NotificationSeverity {
+  info
+  success
+  warning
+  critical
 }

@@ -8,7 +8,7 @@
     "lint": "eslint app components next.config.ts vitest.config.ts --ext .ts,.tsx",
     "start": "next start",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "next typegen && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@erptry/contracts": "workspace:*",

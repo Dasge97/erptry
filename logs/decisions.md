@@ -77,3 +77,9 @@
 - motivo: vender requiere antes un catalogo base de productos y servicios reutilizable;
 - impacto: el proyecto ya puede unir clientes con una oferta comercial concreta en la siguiente fase;
 - consecuencia futura: `sales` podra nacer con relaciones claras y sin inventar conceptos en medio del flujo.
+
+## D-014 - Cerrar `release-operable-v1` sin `work-shifts`, `inventory`, `warehouses`, `providers` ni `expenses`
+
+- motivo: el minimo operable para pymes de servicios y gestion comercial ya queda cubierto por plataforma, circuito comercial-financiero, operacion interna base y modulos de control;
+- impacto: se elimina ambiguedad del alcance y el cierre de release deja de depender de abrir subdominios de fichajes, stock, abastecimiento y gasto;
+- consecuencia futura: la siguiente ola debe agrupar esos modulos con sus reglas propias de movimientos, conciliacion, imputacion y disponibilidad en un plan separado y coherente.

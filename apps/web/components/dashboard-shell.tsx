@@ -18,33 +18,33 @@ export function DashboardShell({ apiBaseUrl, manifest }: DashboardShellProps) {
     <main className="page-shell">
       <section className="hero">
         <div>
-          <p className="eyebrow">ERP modular listo para crecer</p>
-          <h1>ERPTRY nace con un nucleo claro para operar multiempresa desde el primer build.</h1>
+          <p className="eyebrow">Release operable v1 en endurecimiento</p>
+          <h1>ERPTRY prepara un backoffice vendible para pymes de servicios, no solo una demo tecnica.</h1>
           <p className="lede">{manifest.headline}</p>
         </div>
         <div className="hero-pills">
-          <StatPill label="fase" value="bootstrap" />
-          <StatPill label="canal" value="backoffice" />
+          <StatPill label="release" value="operable-v1" />
+          <StatPill label="canal" value="servicios" />
           <StatPill label="modulos" value={String(manifest.modules.length)} />
         </div>
       </section>
 
       <section className="grid">
-        <ShellCard eyebrow="Plataforma" title="Nucleo prioritario">
-          <p>Los primeros modulos activos son autenticacion, usuarios, permisos, ajustes y multi-tenant.</p>
+        <ShellCard eyebrow="Circuito vendible" title="Del cliente al cobro">
+          <p>La release ya cubre clientes, catalogo, ventas, facturacion y cobros con datos persistidos y tenant demo repetible.</p>
         </ShellCard>
-        <ShellCard eyebrow="Operativa" title="Contratos listos para expandir">
-          <p>El workspace ya comparte contratos, dominio y componentes para evitar divergencia entre API y web.</p>
+        <ShellCard eyebrow="Operacion interna" title="Trabajo con trazabilidad">
+          <p>Empleados, tareas, reservas, notificaciones y auditoria conectan la ejecucion interna con el contexto comercial real.</p>
         </ShellCard>
-        <ShellCard eyebrow="Roadmap" title="Siguiente salto tecnico">
-          <p>La siguiente iteracion entra en persistencia, sesiones, roles y bootstrap real del primer vertical.</p>
+        <ShellCard eyebrow="Cierre de release" title="Ultimo repaso visual">
+          <p>El siguiente filtro es revisar copy, formularios en EUR y control operativo en navegador antes de plantear cierre vendible.</p>
         </ShellCard>
       </section>
 
       <LoginPanel apiBaseUrl={apiBaseUrl} />
 
       <section className="modules-panel">
-        <h2>Capacidades del bootstrap</h2>
+        <h2>Perimetro operativo activo</h2>
         <div className="module-list">
           {manifest.modules.map((moduleName) => (
             <span key={moduleName} className="module-pill">
@@ -55,7 +55,7 @@ export function DashboardShell({ apiBaseUrl, manifest }: DashboardShellProps) {
       </section>
 
       <section className="modules-panel modules-panel--soft">
-        <h2>Prioridades activas</h2>
+        <h2>Prioridades del cierre vendible</h2>
         <div className="module-list">
           {manifest.priorities.map((priority) => (
             <span key={priority} className="module-pill module-pill--accent">
