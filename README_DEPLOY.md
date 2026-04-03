@@ -29,6 +29,6 @@ Este proyecto todavia esta en fase base documental y de arquitectura. El deploym
 
 ## Estado actual
 
-- ya existe `infra/docker/docker-compose.local.yml` para desarrollo local;
+- ya existe `infra/docker/docker-compose.local.yml` para desarrollo local con PostgreSQL, API y web;
 - el compose productivo de CodeHive sigue pendiente hasta definir imagenes finales, variables y healthchecks cerrados;
 - cuando se prepare deployment real, debera publicarse desde `/home/codehive/codehive-app-state/deployments/erptry/workspace`.

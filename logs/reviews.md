@@ -20,3 +20,10 @@
 - carencia: el acceso sigue apoyado en datos bootstrap y no en persistencia real;
 - mejora aplicada: el dominio ya expone contratos de sesion y la API tiene rutas claras para evolucionar auth;
 - siguiente accion: introducir base de datos y sustituir el login demo por autenticacion persistida.
+
+## Review 004
+
+- fortaleza: ya existe persistencia real con Prisma, PostgreSQL y seed inicial reproducible;
+- carencia: la web todavia no gobierna un estado autenticado completo de backoffice ni hay CRUD de plataforma;
+- mejora aplicada: el panel web ya puede atacar el login persistido en cuanto la API este seedada;
+- siguiente accion: crear el primer flujo autenticado de tenant y usuarios.

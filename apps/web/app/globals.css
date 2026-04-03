@@ -90,6 +90,10 @@ body {
   border: 1px solid var(--line);
 }
 
+.modules-panel--soft {
+  background: rgba(255, 248, 242, 0.7);
+}
+
 .modules-panel h2 {
   margin: 0 0 18px;
   font-size: 1.6rem;
@@ -109,9 +113,92 @@ body {
   color: var(--ink-strong);
 }
 
+.module-pill--accent {
+  background: rgba(217, 107, 59, 0.12);
+  border-color: rgba(217, 107, 59, 0.22);
+}
+
+.login-panel {
+  margin-top: 24px;
+  display: grid;
+  gap: 18px;
+  padding: 28px;
+  border-radius: 28px;
+  background: rgba(15, 39, 64, 0.95);
+  color: #f5efe7;
+}
+
+.login-panel h2 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.login-copy {
+  margin: 8px 0 0;
+  color: rgba(245, 239, 231, 0.8);
+}
+
+.login-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: end;
+}
+
+.login-form label {
+  display: grid;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+.login-form input {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(245, 239, 231, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  padding: 14px 16px;
+}
+
+.login-form button {
+  border: 0;
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: var(--accent);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.login-status {
+  margin: 0;
+  color: rgba(245, 239, 231, 0.78);
+}
+
+.login-status--error {
+  color: #ffd7c8;
+}
+
+.login-status--success {
+  color: #d0ffdd;
+}
+
+.permission-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.login-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 @media (max-width: 920px) {
   .hero,
-  .grid {
+  .grid,
+  .login-form {
     grid-template-columns: 1fr;
   }
 

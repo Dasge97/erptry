@@ -47,3 +47,9 @@
 - motivo: validar pronto el circuito de acceso sin bloquear el avance por la base de datos;
 - impacto: ya existe un flujo de login y resolucion de sesion reutilizable para futuras capas de auth;
 - consecuencia futura: habra que reemplazar usuarios bootstrap y secreto de desarrollo por almacenamiento y gestion reales.
+
+## D-009 - Prisma con PostgreSQL como primera persistencia real
+
+- motivo: acelerar un modelo relacional fuerte para tenant, usuarios, roles, permisos y sesiones;
+- impacto: la base ya puede pasar de bootstrap en memoria a autenticacion persistida con seed reproducible;
+- consecuencia futura: la siguiente iteracion debe convertir `db push` en migraciones versionadas de release.

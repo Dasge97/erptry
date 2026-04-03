@@ -1,50 +1,11 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
-
 import type { FastifyInstance } from 'fastify';
 
-import { demoLoginRequestSchema, demoLoginResponseSchema, sessionActorSchema } from '@erptry/contracts';
+import { demoLoginRequestSchema, demoLoginResponseSchema, loginRequestSchema, sessionActorSchema } from '@erptry/contracts';
 import { findBootstrapUserByEmail, toSessionActor } from '@erptry/domain';
 
 import { appConfig } from '../config';
-
-type SessionTokenPayload = {
-  actor: ReturnType<typeof toSessionActor>;
-  issuedAt: string;
-  expiresAt: string;
-};
-
-function signPayload(payload: string): string {
-  return createHmac('sha256', appConfig.sessionSecret).update(payload).digest('base64url');
-}
-
-function encodeToken(payload: SessionTokenPayload): string {
-  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const signature = signPayload(encodedPayload);
-
-  return `${encodedPayload}.${signature}`;
-}
-
-function decodeToken(token: string): SessionTokenPayload | null {
-  const [encodedPayload, signature] = token.split('.');
-
-  if (!encodedPayload || !signature) {
-    return null;
-  }
-
-  const expected = signPayload(encodedPayload);
-
-  if (!timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8')) as SessionTokenPayload;
-
-    return parsed;
-  } catch {
-    return null;
-  }
-}
+import { prisma } from '../lib/prisma';
+import { createPersistedSession, resolvePersistedSession } from '../services/auth-service';
 
 export async function registerAuthModule(app: FastifyInstance) {
   app.post('/api/auth/demo-login', async (request, reply) => {
@@ -61,7 +22,7 @@ export async function registerAuthModule(app: FastifyInstance) {
     const actor = toSessionActor(user);
     const issuedAt = new Date().toISOString();
     const expiresAt = new Date(Date.now() + appConfig.sessionTtlMs).toISOString();
-    const token = encodeToken({ actor, issuedAt, expiresAt });
+    const token = Buffer.from(JSON.stringify({ actor, issuedAt, expiresAt })).toString('base64url');
 
     return demoLoginResponseSchema.parse({
       token,
@@ -73,7 +34,23 @@ export async function registerAuthModule(app: FastifyInstance) {
 
   app.post('/api/auth/session/resolve', async (request, reply) => {
     const body = request.body as { token?: string };
-    const payload = typeof body.token === 'string' ? decodeToken(body.token) : null;
+    let payload: {
+      actor: ReturnType<typeof toSessionActor>;
+      issuedAt: string;
+      expiresAt: string;
+    } | null = null;
+
+    if (typeof body.token === 'string') {
+      try {
+        payload = JSON.parse(Buffer.from(body.token, 'base64url').toString('utf8')) as {
+          actor: ReturnType<typeof toSessionActor>;
+          issuedAt: string;
+          expiresAt: string;
+        };
+      } catch {
+        payload = null;
+      }
+    }
 
     if (!payload) {
       return reply.code(401).send({
@@ -94,5 +71,55 @@ export async function registerAuthModule(app: FastifyInstance) {
       issuedAt: payload.issuedAt,
       expiresAt: payload.expiresAt
     };
+  });
+
+  app.post('/api/auth/login', async (request, reply) => {
+    if (!appConfig.databaseUrl) {
+      return reply.code(503).send({
+        error: 'database_not_configured',
+        message: 'Configura DATABASE_URL y ejecuta el seed para activar la autenticacion persistida.'
+      });
+    }
+
+    const body = loginRequestSchema.parse(request.body);
+    const session = await createPersistedSession(prisma, body.email, body.password);
+
+    if (!session) {
+      return reply.code(401).send({
+        error: 'invalid_credentials',
+        message: 'Las credenciales no son validas.'
+      });
+    }
+
+    return session;
+  });
+
+  app.post('/api/auth/me', async (request, reply) => {
+    if (!appConfig.databaseUrl) {
+      return reply.code(503).send({
+        error: 'database_not_configured',
+        message: 'Configura DATABASE_URL y ejecuta el seed para activar la autenticacion persistida.'
+      });
+    }
+
+    const body = request.body as { token?: string };
+
+    if (typeof body.token !== 'string' || body.token.length === 0) {
+      return reply.code(400).send({
+        error: 'missing_token',
+        message: 'Falta el token de sesion.'
+      });
+    }
+
+    const me = await resolvePersistedSession(prisma, body.token);
+
+    if (!me) {
+      return reply.code(401).send({
+        error: 'invalid_session',
+        message: 'La sesion no es valida o ha expirado.'
+      });
+    }
+
+    return me;
   });
 }

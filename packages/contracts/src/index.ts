@@ -74,3 +74,48 @@ export const demoLoginResponseSchema = z.object({
 });
 
 export type DemoLoginResponse = z.infer<typeof demoLoginResponseSchema>;
+
+export const loginRequestSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8)
+});
+
+export type LoginRequest = z.infer<typeof loginRequestSchema>;
+
+export const sessionEnvelopeSchema = z.object({
+  token: z.string().min(1),
+  actor: sessionActorSchema,
+  issuedAt: z.string().datetime(),
+  expiresAt: z.string().datetime()
+});
+
+export type SessionEnvelope = z.infer<typeof sessionEnvelopeSchema>;
+
+export const meResponseSchema = z.object({
+  actor: sessionActorSchema,
+  tenant: tenantSchema,
+  permissions: z.array(z.string().min(1)),
+  issuedAt: z.string().datetime(),
+  expiresAt: z.string().datetime()
+});
+
+export type MeResponse = z.infer<typeof meResponseSchema>;
+
+export const userSummarySchema = z.object({
+  id: z.string().min(1),
+  email: z.string().email(),
+  fullName: z.string().min(1),
+  status: z.enum(['active', 'suspended']),
+  tenantId: z.string().min(1),
+  roles: z.array(z.string().min(1))
+});
+
+export type UserSummary = z.infer<typeof userSummarySchema>;
+
+export const tenantOverviewSchema = z.object({
+  tenant: tenantSchema,
+  totalUsers: z.number().int().nonnegative(),
+  activeSessions: z.number().int().nonnegative()
+});
+
+export type TenantOverview = z.infer<typeof tenantOverviewSchema>;

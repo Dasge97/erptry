@@ -81,6 +81,8 @@ corepack pnpm lint
 corepack pnpm build
 corepack pnpm --filter @erptry/api dev
 corepack pnpm --filter @erptry/web dev
+corepack pnpm --filter @erptry/api db:push
+corepack pnpm --filter @erptry/api db:seed
 ```
 
 ## Endpoints actuales de API
@@ -90,6 +92,14 @@ corepack pnpm --filter @erptry/web dev
 - `GET /api/platform/bootstrap`
 - `POST /api/auth/demo-login`
 - `POST /api/auth/session/resolve`
+- `POST /api/auth/login`
+- `POST /api/auth/me`
+
+## Persistencia actual
+
+- `apps/api/prisma/schema.prisma` define `tenant`, `user`, `role`, `permission`, `session` y tablas intermedias;
+- el seed inicial crea un tenant demo, permisos base, rol `owner` y usuario administrador;
+- la web ya incluye un panel para probar el login persistido cuando la API tenga base de datos disponible.
 
 ## Principios de producto
 

@@ -292,4 +292,5 @@ La siguiente iteracion debe materializar la base tecnica minima ejecutable sin r
 Estado actual del nucleo:
 
 - existe login demo con sesion firmada para validar el circuito de acceso;
-- falta sustituir la identidad bootstrap por persistencia real y estrategia de sesiones definitiva.
+- existe tambien autenticacion persistida preparada para PostgreSQL mediante Prisma;
+- falta cerrar migraciones de produccion, estrategia definitiva de sesiones y endurecimiento de credenciales.

@@ -1,25 +1,31 @@
 import React from 'react';
 
-import { createPlatformSnapshot } from '@erptry/domain';
 import { ShellCard, StatPill } from '@erptry/ui';
 
-const snapshot = createPlatformSnapshot();
+import { LoginPanel } from './login-panel';
 
-export function DashboardShell() {
+type DashboardShellProps = {
+  apiBaseUrl: string;
+  manifest: {
+    headline: string;
+    modules: string[];
+    priorities: string[];
+  };
+};
+
+export function DashboardShell({ apiBaseUrl, manifest }: DashboardShellProps) {
   return (
     <main className="page-shell">
       <section className="hero">
         <div>
           <p className="eyebrow">ERP modular listo para crecer</p>
           <h1>ERPTRY nace con un nucleo claro para operar multiempresa desde el primer build.</h1>
-          <p className="lede">
-            Esta base prioriza identidad, permisos, tenant scope y una expansion por dominios que no comprometa la mantenibilidad.
-          </p>
+          <p className="lede">{manifest.headline}</p>
         </div>
         <div className="hero-pills">
           <StatPill label="fase" value="bootstrap" />
-          <StatPill label="tenant" value={snapshot.tenant.slug} />
-          <StatPill label="modulos" value={String(snapshot.capabilities.length)} />
+          <StatPill label="canal" value="backoffice" />
+          <StatPill label="modulos" value={String(manifest.modules.length)} />
         </div>
       </section>
 
@@ -35,12 +41,25 @@ export function DashboardShell() {
         </ShellCard>
       </section>
 
+      <LoginPanel apiBaseUrl={apiBaseUrl} />
+
       <section className="modules-panel">
         <h2>Capacidades del bootstrap</h2>
         <div className="module-list">
-          {snapshot.capabilities.map((moduleName) => (
+          {manifest.modules.map((moduleName) => (
             <span key={moduleName} className="module-pill">
               {moduleName}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="modules-panel modules-panel--soft">
+        <h2>Prioridades activas</h2>
+        <div className="module-list">
+          {manifest.priorities.map((priority) => (
+            <span key={priority} className="module-pill module-pill--accent">
+              {priority}
             </span>
           ))}
         </div>

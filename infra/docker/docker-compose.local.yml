@@ -1,20 +1,41 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: erptry
+      POSTGRES_USER: erptry
+      POSTGRES_PASSWORD: erptry
+    ports:
+      - "5432:5432"
+    volumes:
+      - erptry_postgres:/var/lib/postgresql/data
+
   api:
     image: node:22-alpine
     working_dir: /workspace
-    command: sh -c "corepack enable && pnpm install && pnpm --filter @erptry/api dev"
+    command: sh -c "corepack pnpm install && corepack pnpm --filter @erptry/api db:generate && corepack pnpm --filter @erptry/api dev"
     volumes:
       - ../../:/workspace
     ports:
       - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://erptry:erptry@postgres:5432/erptry
+      SESSION_SECRET: erptry-dev-session-secret
+    depends_on:
+      - postgres
 
   web:
     image: node:22-alpine
     working_dir: /workspace
-    command: sh -c "corepack enable && pnpm install && pnpm --filter @erptry/web dev"
+    command: sh -c "corepack pnpm install && corepack pnpm --filter @erptry/web dev"
     volumes:
       - ../../:/workspace
     ports:
       - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://api:3001
     depends_on:
       - api
+
+volumes:
+  erptry_postgres:
