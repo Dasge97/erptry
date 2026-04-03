@@ -32,7 +32,15 @@ import { createPayment, listPayments } from '../services/payments-service';
 import { createReservation, listReservations } from '../services/reservations-service';
 import { getReportsBundle } from '../services/reports-service';
 import { listNotifications, markNotificationRead } from '../services/notifications-service';
-import { createTenantUser, getTenantOverview, listRoles, listTenantUsers, updateTenantUserRole } from '../services/platform-service';
+import {
+  canAssignTenantUserRole,
+  canReadRoleCatalog,
+  createTenantUser,
+  getTenantOverview,
+  listRoles,
+  listTenantUsers,
+  updateTenantUserRole
+} from '../services/platform-service';
 import { getTenantSettings, upsertTenantSettings } from '../services/settings-service';
 import { createSale, listSales } from '../services/sales-service';
 
@@ -190,6 +198,14 @@ export async function registerPlatformModule(app: FastifyInstance) {
     }
 
     const input = createUserRequestSchema.parse(body.user);
+
+    if (!canAssignTenantUserRole(me.permissions, input.roleCode)) {
+      return reply.code(403).send({
+        error: 'forbidden',
+        message: 'La sesion actual solo puede asignar perfiles operator o viewer.'
+      });
+    }
+
     const createdUser = await createTenantUser(prisma, me.tenant.id, input);
 
     if (!createdUser) {
@@ -329,7 +345,7 @@ export async function registerPlatformModule(app: FastifyInstance) {
       });
     }
 
-    if (!me.permissions.includes('roles.manage') && !me.permissions.includes('users.manage')) {
+    if (!canReadRoleCatalog(me.permissions)) {
       return reply.code(403).send({
         error: 'forbidden',
         message: 'La sesion actual no puede consultar roles.'

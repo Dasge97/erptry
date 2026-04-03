@@ -4,9 +4,14 @@ import React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 
 import type { AnalyticsSnapshot, AuditLogsFeed, NotificationsInbox, ReportsBundle } from '@erptry/contracts';
+import type { AccessReviewRole } from './login-panel-helpers';
 
 import {
+  getAccessValidationChecks,
+  getAccessReviewStorageKey,
+  getAccessReviewTimeline,
   getAccessReviewSummary,
+  getNextVisitedAccessRoles,
   getDemoAccessProfiles,
   getAuditActionLabel,
   getCatalogKindLabel,
@@ -24,6 +29,7 @@ import {
   getPaymentFormState,
   getPaymentMethodLabel,
   getPaymentStatusLabel,
+  getRoleLabel,
   getReleaseOperableV1Checklist,
   getReleaseOperableV1ReviewCards,
   getResourceTypeLabel,
@@ -33,6 +39,7 @@ import {
   getReservationSelectionForAssignee,
   getReservationSelectionForTask,
   getReservationTaskOptions,
+  sanitizeAccessReviewRoles,
   getSaleStageLabel
 } from './login-panel-helpers';
 
@@ -50,6 +57,7 @@ type LoginState =
       actorEmail: string;
       actorRole: 'owner' | 'admin' | 'manager' | 'operator' | 'viewer';
       permissions: string[];
+      tenantId: string;
       tenantName: string;
       totalUsers: number;
       activeSessions: number;
@@ -364,6 +372,25 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
   const [reservationDate, setReservationDate] = useState('2026-04-23');
   const [reservationStartTime, setReservationStartTime] = useState('09:00');
   const [reservationEndTime, setReservationEndTime] = useState('10:00');
+  const [visitedAccessRoles, setVisitedAccessRoles] = useState<AccessReviewRole[]>([]);
+
+  const accessReviewTenantName = state.status === 'success' ? state.tenantName : '';
+  const accessReviewTenantId = state.status === 'success' ? state.tenantId : '';
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !accessReviewTenantName) {
+      return;
+    }
+
+    const storageKey = getAccessReviewStorageKey(accessReviewTenantName, accessReviewTenantId);
+
+    if (visitedAccessRoles.length === 0) {
+      window.localStorage.removeItem(storageKey);
+      return;
+    }
+
+    window.localStorage.setItem(storageKey, JSON.stringify(visitedAccessRoles));
+  }, [accessReviewTenantId, accessReviewTenantName, visitedAccessRoles]);
 
   async function loadRoles(token: string) {
     const response = await fetch(`${apiBaseUrl}/api/platform/roles`, {
@@ -747,6 +774,7 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
   }, [demoAccessProfiles, email, state]);
 
   const canManageUsers = state.status === 'success' && hasAnyPermission(state.permissions, ['users.manage']);
+  const canManageRoles = state.status === 'success' && hasAnyPermission(state.permissions, ['roles.manage']);
   const canManageSettings = state.status === 'success' && hasAnyPermission(state.permissions, ['settings.manage']);
   const canReadCommercial = state.status === 'success' && hasAnyPermission(state.permissions, ['sales.view', 'sales.manage']);
   const canManageCommercial = state.status === 'success' && hasAnyPermission(state.permissions, ['sales.manage']);
@@ -765,6 +793,12 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
   const canReadNotifications = state.status === 'success' && hasAnyPermission(state.permissions, ['notifications.view', 'notifications.manage']);
   const canManageNotifications = state.status === 'success' && hasAnyPermission(state.permissions, ['notifications.manage']);
   const canReadAuditLogs = state.status === 'success' && hasAnyPermission(state.permissions, ['audit.view', 'audit.manage']);
+
+  useEffect(() => {
+    if (!canManageRoles && (newUserRole === 'admin' || newUserRole === 'manager')) {
+      setNewUserRole('viewer');
+    }
+  }, [canManageRoles, newUserRole]);
 
   const invoiceableSales = useMemo(() => {
     if (state.status !== 'success') {
@@ -895,6 +929,30 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
       permissions: state.permissions
     });
   }, [state]);
+
+  const accessValidationChecks = useMemo(() => {
+    if (state.status !== 'success') {
+      return [];
+    }
+
+    return getAccessValidationChecks({
+      actorRole: state.actorRole,
+      actorEmail: state.actorEmail,
+      permissions: state.permissions
+    });
+  }, [state]);
+
+  const accessReviewTimeline = useMemo(() => {
+    if (state.status !== 'success') {
+      return null;
+    }
+
+    return getAccessReviewTimeline({
+      visitedRoles: visitedAccessRoles,
+      actorRole: state.actorRole,
+      actorEmail: state.actorEmail
+    });
+  }, [state, visitedAccessRoles]);
 
   const permissionGroups = useMemo(() => {
     if (state.status !== 'success') {
@@ -1239,6 +1297,7 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
 
       const permissions = mePayload.permissions as string[];
       const canManageUsers = hasAnyPermission(permissions, ['users.manage']);
+      const canManageRoles = hasAnyPermission(permissions, ['roles.manage']);
       const canManageSettings = hasAnyPermission(permissions, ['settings.manage']);
       const canReadCommercial = hasAnyPermission(permissions, ['sales.view', 'sales.manage']);
       const canReadBilling = hasAnyPermission(permissions, ['billing.view', 'billing.manage']);
@@ -1260,7 +1319,7 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
               defaultLocale,
               timezone
             }),
-        canManageUsers ? loadRoles(loginPayload.token) : Promise.resolve([]),
+        canManageRoles ? loadRoles(loginPayload.token) : Promise.resolve([]),
         canReadCommercial ? loadClients(loginPayload.token) : Promise.resolve([]),
         canReadCommercial ? loadCatalogItems(loginPayload.token) : Promise.resolve([]),
         canReadCommercial ? loadSales(loginPayload.token) : Promise.resolve([]),
@@ -1317,6 +1376,7 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
         actorEmail: mePayload.actor.email,
         actorRole: mePayload.actor.role,
         permissions,
+        tenantId: tenantPayload.tenant.id,
         tenantName: tenantPayload.tenant.name,
         totalUsers: tenantPayload.totalUsers,
         activeSessions: tenantPayload.activeSessions,
@@ -1337,6 +1397,38 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
         notifications,
         auditLogs
       });
+
+      const accessReviewStorageKey = getAccessReviewStorageKey(tenantPayload.tenant.name, tenantPayload.tenant.id);
+      let persistedVisitedRoles: AccessReviewRole[] = [];
+
+      if (typeof window !== 'undefined') {
+        try {
+          const persistedValue = window.localStorage.getItem(accessReviewStorageKey);
+
+          if (persistedValue) {
+            const parsedValue = JSON.parse(persistedValue);
+
+            if (Array.isArray(parsedValue)) {
+              persistedVisitedRoles = sanitizeAccessReviewRoles(parsedValue.filter((value): value is string => typeof value === 'string'));
+            }
+          }
+        } catch {
+          persistedVisitedRoles = [];
+        }
+      }
+
+      const actorEmail = String(mePayload.actor.email ?? '').trim().toLowerCase();
+      const reviewRole = mePayload.actor.role === 'owner' || mePayload.actor.role === 'manager' || mePayload.actor.role === 'viewer'
+        ? mePayload.actor.role
+        : actorEmail === 'owner@erptry.local'
+          ? 'owner'
+          : actorEmail === 'manager@erptry.local'
+            ? 'manager'
+            : actorEmail === 'viewer@erptry.local'
+              ? 'viewer'
+              : null;
+
+      setVisitedAccessRoles(getNextVisitedAccessRoles(persistedVisitedRoles, reviewRole ?? undefined));
     } catch {
       setState({ status: 'error', message: 'La API no esta disponible ahora mismo.' });
     }
@@ -1992,7 +2084,7 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
       <section className="users-section users-section--compact">
         <div className="users-section__header">
           <h3>Perfiles demo listos para repaso</h3>
-          <p>Carga una cuenta de seed y repite el recorrido visual empezando por `owner`, pasando por `viewer` y volviendo despues al perfil con gestion.</p>
+          <p>Carga una cuenta de seed y repite el recorrido visual en orden owner, manager y viewer para validar permisos y restricciones sin ambiguedades.</p>
         </div>
         <div className="users-grid users-grid--quad">
           {demoAccessProfiles.map((profile) => {
@@ -2030,7 +2122,7 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
       {state.status === 'success' ? (
         <>
           <div className="login-metrics" id="access-section">
-            <span className="module-pill module-pill--accent">perfil: {state.actorRole}</span>
+            <span className="module-pill module-pill--accent">perfil: {getRoleLabel(state.actorRole)}</span>
             <span className="module-pill">tenant: {state.tenantName}</span>
             <span className="module-pill">usuarios: {state.totalUsers}</span>
             <span className="module-pill">sesiones activas: {state.activeSessions}</span>
@@ -2079,6 +2171,81 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
                   </div>
                   <span>{accessReviewSummary.nextStep}</span>
                 </article>
+              </div>
+            </section>
+          ) : null}
+          {accessValidationChecks.length > 0 ? (
+            <section className="users-section users-section--compact" id="access-acl-checks-section">
+              <div className="users-section__header">
+                <h3>Control ACL del perfil activo</h3>
+                <p>Checks rapidos para confirmar en cada login que el rol cargado respeta el alcance esperado antes de seguir el repaso visual.</p>
+              </div>
+              <div className="users-grid analytics-panels">
+                {accessValidationChecks.map((check) => (
+                  <article key={check.id} className={`user-card flow-check-item flow-check-item--${check.status === 'ok' ? 'complete' : 'attention'}`}>
+                    <div className="permission-list">
+                      <span className={`module-pill module-pill--accent flow-check-pill flow-check-pill--${check.status === 'ok' ? 'complete' : 'attention'}`}>
+                        {check.status === 'ok' ? 'ok' : 'revisar'}
+                      </span>
+                    </div>
+                    <strong>{check.label}</strong>
+                    <span>{check.detail}</span>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
+          {accessReviewTimeline ? (
+            <section className="users-section users-section--compact" id="access-review-progress-section">
+              <div className="users-section__header">
+                <h3>Progreso del repaso ACL</h3>
+                <p>Registro visual del recorrido owner - manager - viewer para evitar saltos durante la validacion manual final.</p>
+              </div>
+              <div className="permission-list">
+                <span className="module-pill module-pill--accent">
+                  perfiles validados: {accessReviewTimeline.completedCount}/{accessReviewTimeline.totalCount}
+                </span>
+                <span className={`module-pill ${accessReviewTimeline.orderStatus === 'ok' ? 'module-pill--accent' : ''}`}>
+                  orden: {accessReviewTimeline.orderStatus === 'ok' ? 'ok' : 'revisar'}
+                </span>
+                <span className="module-pill">bitacora tenant: {state.tenantName} · {state.tenantId.slice(0, 8)}</span>
+                <button className="secondary-action secondary-action--light" onClick={() => setVisitedAccessRoles([])} type="button">
+                  Reiniciar recorrido
+                </button>
+              </div>
+              <p className={`login-status login-status--${accessReviewTimeline.orderStatus === 'ok' ? 'success' : 'error'}`}>
+                {accessReviewTimeline.orderHint}
+              </p>
+              <p className="login-status login-status--idle">El avance se guarda por tenant en este navegador hasta que reinicies el recorrido.</p>
+              <p className="login-status login-status--idle">{accessReviewTimeline.nextStepHint}</p>
+              <div className="users-grid analytics-panels">
+                {accessReviewTimeline.steps.map((step) => {
+                  const requiresReset = step.needsReset;
+                  const visualStatus = requiresReset
+                    ? 'attention'
+                    : step.status === 'pending'
+                      ? 'pending'
+                      : 'complete';
+                  const pillLabel = requiresReset
+                    ? 'revisar'
+                    : step.status === 'done'
+                      ? 'ok'
+                      : step.status === 'current'
+                        ? 'actual'
+                        : 'pendiente';
+
+                  return (
+                    <article key={step.id} className={`user-card flow-check-item flow-check-item--${visualStatus}`}>
+                      <div className="permission-list">
+                        <span className={`module-pill module-pill--accent flow-check-pill flow-check-pill--${visualStatus}`}>
+                          {pillLabel}
+                        </span>
+                      </div>
+                      <strong>{step.title}</strong>
+                      <span>{requiresReset ? `${step.detail} Repite este perfil despues de reiniciar el recorrido.` : step.detail}</span>
+                    </article>
+                  );
+                })}
               </div>
             </section>
           ) : null}
@@ -2421,23 +2588,27 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
                   <strong>{user.fullName}</strong>
                   <span>{user.email}</span>
                   <span>{user.status}</span>
-                  <label>
-                    <span>Rol actual</span>
-                    <select
-                      value={user.roles[0] ?? 'viewer'}
-                      onChange={(event) => void handleChangeUserRole(user.id, event.target.value)}
-                    >
-                      {state.rolesCatalog.map((role) => (
-                        <option key={role.id} value={role.code}>
-                          {role.code}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  {canManageRoles ? (
+                    <label>
+                      <span>Rol actual</span>
+                      <select
+                        value={user.roles[0] ?? 'viewer'}
+                        onChange={(event) => void handleChangeUserRole(user.id, event.target.value)}
+                      >
+                        {state.rolesCatalog.map((role) => (
+                          <option key={role.id} value={role.code}>
+                            {getRoleLabel(role.code)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : (
+                    <span>Rol actual: {getRoleLabel(user.roles[0] ?? 'viewer')}</span>
+                  )}
                   <div className="permission-list">
                     {user.roles.map((role) => (
                       <span key={role} className="module-pill module-pill--accent">
-                        {role}
+                        {getRoleLabel(role)}
                       </span>
                     ))}
                   </div>
@@ -2460,10 +2631,19 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
               <label>
                 <span>Rol</span>
                 <select value={newUserRole} onChange={(event) => setNewUserRole(event.target.value as typeof newUserRole)}>
-                  <option value="admin">admin</option>
-                  <option value="manager">manager</option>
-                  <option value="operator">operator</option>
-                  <option value="viewer">viewer</option>
+                  {canManageRoles ? (
+                    <>
+                      <option value="admin">{getRoleLabel('admin')}</option>
+                      <option value="manager">{getRoleLabel('manager')}</option>
+                      <option value="operator">{getRoleLabel('operator')}</option>
+                      <option value="viewer">{getRoleLabel('viewer')}</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="operator">{getRoleLabel('operator')}</option>
+                      <option value="viewer">{getRoleLabel('viewer')}</option>
+                    </>
+                  )}
                 </select>
               </label>
               <button type="submit" disabled={createUserState.status === 'loading'}>
@@ -2472,7 +2652,9 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
             </form>
             <p className={`login-status login-status--${createUserState.status}`}>
               {createUserState.status === 'idle'
-                ? 'Puedes crear usuarios y reasignar roles del tenant desde este panel.'
+                ? canManageRoles
+                  ? 'Puedes crear usuarios y reasignar roles del tenant desde este panel.'
+                  : 'Puedes crear usuarios operativos (Operator y Viewer) sin escalar a roles de plataforma.'
                 : createUserState.status === 'loading'
                   ? 'Aplicando cambios...'
                   : createUserState.message}

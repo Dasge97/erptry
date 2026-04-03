@@ -8,6 +8,7 @@ import { createInternalTask, listInternalTasks } from '../services/internal-task
 import { createInvoiceFromSale, listInvoices } from '../services/invoices-service';
 import { listNotifications } from '../services/notifications-service';
 import { createPayment, listPayments } from '../services/payments-service';
+import { canAssignTenantUserRole, canReadRoleCatalog } from '../services/platform-service';
 import { getReportsBundle } from '../services/reports-service';
 import { createReservation, listReservations } from '../services/reservations-service';
 import { createSale, listSales } from '../services/sales-service';
@@ -20,6 +21,41 @@ const VALIDATION_MARKER = '[release-operable-v1-validation]';
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
     throw new Error(message);
+  }
+}
+
+function assertIncludesAll(permissionCodes: string[], expected: string[], errorPrefix: string) {
+  const missingPermissions = expected.filter((permission) => !permissionCodes.includes(permission));
+
+  assert(
+    missingPermissions.length === 0,
+    `${errorPrefix}. Faltan permisos: ${missingPermissions.join(', ')}.`
+  );
+}
+
+function assertExcludesAll(permissionCodes: string[], forbidden: string[], errorPrefix: string) {
+  const presentForbiddenPermissions = forbidden.filter((permission) => permissionCodes.includes(permission));
+
+  assert(
+    presentForbiddenPermissions.length === 0,
+    `${errorPrefix}. Permisos no esperados: ${presentForbiddenPermissions.join(', ')}.`
+  );
+}
+
+function ensureDatabaseUrl() {
+  const databaseUrl = process.env.DATABASE_URL?.trim();
+
+  assert(
+    databaseUrl,
+    'Falta DATABASE_URL. Configura PostgreSQL local (db:push + db:seed) y vuelve a ejecutar validate:release-operable-v1.'
+  );
+}
+
+async function safeCleanup(step: string, action: () => Promise<void>) {
+  try {
+    await action();
+  } catch (error) {
+    console.error(`[release-operable-v1-validation] cleanup warning (${step})`, error);
   }
 }
 
@@ -253,19 +289,62 @@ async function createTempEmployee(tenantId: string, status: 'active' | 'on_leave
   });
 }
 
+async function getUserPermissionCodes(tenantId: string, email: string) {
+  const user = await prisma.user.findFirst({
+    where: {
+      tenantId,
+      email: email.toLowerCase()
+    },
+    include: {
+      roles: {
+        include: {
+          role: {
+            include: {
+              permissions: {
+                include: {
+                  permission: true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  assert(user, `No existe el usuario demo '${email}'. Ejecuta db:seed primero.`);
+
+  const permissionCodes = new Set<string>();
+
+  user.roles.forEach((userRole) => {
+    userRole.role.permissions.forEach((rolePermission) => {
+      permissionCodes.add(rolePermission.permission.code);
+    });
+  });
+
+  return Array.from(permissionCodes).sort();
+}
+
 async function main() {
+  ensureDatabaseUrl();
+
   const tenantSlug = process.env.SEED_TENANT_SLUG ?? 'erptry';
   const ownerEmail = (process.env.SEED_ADMIN_EMAIL ?? 'owner@erptry.local').toLowerCase();
+  const managerEmail = 'manager@erptry.local';
+  const viewerEmail = 'viewer@erptry.local';
   const tempSaleIds: string[] = [];
   const tempEmployeeIds: string[] = [];
+  let tenantIdForCleanup: string | null = null;
 
-  const tenant = await prisma.tenant.findUnique({
-    where: { slug: tenantSlug },
-    select: { id: true, name: true }
-  });
-  assert(tenant, `No existe el tenant demo '${tenantSlug}'. Ejecuta db:seed primero.`);
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { slug: tenantSlug },
+      select: { id: true, name: true }
+    });
+    assert(tenant, `No existe el tenant demo '${tenantSlug}'. Ejecuta db:seed primero.`);
+    tenantIdForCleanup = tenant.id;
 
-  await cleanupValidationData(tenant.id);
+    await cleanupValidationData(tenant.id);
 
   const actor = await prisma.user.findFirst({
     where: {
@@ -275,6 +354,92 @@ async function main() {
     select: { id: true, fullName: true, email: true }
   });
   assert(actor, `No existe el usuario demo '${ownerEmail}'. Ejecuta db:seed primero.`);
+
+  const [ownerPermissions, managerPermissions, viewerPermissions] = await Promise.all([
+    getUserPermissionCodes(tenant.id, ownerEmail),
+    getUserPermissionCodes(tenant.id, managerEmail),
+    getUserPermissionCodes(tenant.id, viewerEmail)
+  ]);
+
+  assert(ownerPermissions.includes('users.manage'), 'El perfil owner demo debe mantener users.manage para validar plataforma.');
+  assert(ownerPermissions.includes('roles.manage'), 'El perfil owner demo debe mantener roles.manage para validar ACL completa.');
+  assert(canReadRoleCatalog(ownerPermissions), 'El owner demo debe poder consultar el catalogo de roles.');
+  assertIncludesAll(
+    ownerPermissions,
+    [
+      'settings.manage',
+      'users.manage',
+      'roles.manage',
+      'sales.manage',
+      'billing.manage',
+      'payments.manage',
+      'employees.manage',
+      'tasks.manage',
+      'reservations.manage',
+      'notifications.manage',
+      'analytics.view',
+      'reports.view',
+      'audit.view',
+      'audit.manage'
+    ],
+    'El perfil owner demo debe cubrir todo el alcance vendible para repaso end-to-end'
+  );
+
+  assert(managerPermissions.includes('users.manage'), 'El perfil manager demo debe mantener users.manage para altas operativas.');
+  assert(!managerPermissions.includes('roles.manage'), 'El perfil manager demo no debe incluir roles.manage.');
+  assert(!canReadRoleCatalog(managerPermissions), 'El manager demo no debe poder leer el catalogo de roles.');
+  assert(canAssignTenantUserRole(managerPermissions, 'operator'), 'El manager demo debe poder asignar operator.');
+  assert(canAssignTenantUserRole(managerPermissions, 'viewer'), 'El manager demo debe poder asignar viewer.');
+  assert(!canAssignTenantUserRole(managerPermissions, 'manager'), 'El manager demo no debe poder asignar manager.');
+  assert(!canAssignTenantUserRole(managerPermissions, 'admin'), 'El manager demo no debe poder asignar admin.');
+  assert(!canAssignTenantUserRole(managerPermissions, 'owner'), 'El manager demo no debe poder asignar owner.');
+  assertIncludesAll(
+    managerPermissions,
+    [
+      'users.manage',
+      'sales.manage',
+      'billing.manage',
+      'payments.manage',
+      'employees.manage',
+      'tasks.manage',
+      'reservations.manage',
+      'notifications.manage',
+      'analytics.view',
+      'reports.view',
+      'audit.view'
+    ],
+    'El perfil manager demo debe conservar su alcance operativo'
+  );
+  assertExcludesAll(
+    managerPermissions,
+    ['settings.manage', 'roles.manage', 'audit.manage'],
+    'El perfil manager demo no debe escalar al nucleo de plataforma'
+  );
+
+  assert(!viewerPermissions.includes('users.manage'), 'El viewer demo no debe incluir users.manage.');
+  assert(!viewerPermissions.includes('roles.manage'), 'El viewer demo no debe incluir roles.manage.');
+  assert(!viewerPermissions.includes('settings.manage'), 'El viewer demo no debe incluir settings.manage.');
+  assertIncludesAll(
+    viewerPermissions,
+    [
+      'sales.view',
+      'billing.view',
+      'payments.view',
+      'employees.view',
+      'tasks.view',
+      'reservations.view',
+      'analytics.view',
+      'reports.view',
+      'notifications.view',
+      'audit.view'
+    ],
+    'El perfil viewer demo debe mantener visibilidad de lectura sobre el circuito completo'
+  );
+  assertExcludesAll(
+    viewerPermissions,
+    viewerPermissions.filter((permission) => permission.endsWith('.manage')),
+    'El perfil viewer demo no debe incluir ningun permiso de gestion'
+  );
 
   const [client, activeEmployee, catalogItems] = await Promise.all([
     prisma.client.findFirst({
@@ -584,19 +749,6 @@ async function main() {
     'La auditoria no refleja los eventos manuales esperados de la validacion.'
   );
 
-  if (tempSaleIds.length) {
-    await cleanupSalesCascade(tenant.id, tempSaleIds);
-  }
-
-  if (tempEmployeeIds.length) {
-    await prisma.employee.deleteMany({
-      where: {
-        tenantId: tenant.id,
-        id: { in: tempEmployeeIds }
-      }
-    });
-  }
-
   console.log(
     JSON.stringify(
       {
@@ -613,12 +765,40 @@ async function main() {
           confirmedPayments: analytics.payments.confirmedCount
         },
         notifications: notifications.totalCount,
-        auditLogs: auditLogs.totalCount
+        auditLogs: auditLogs.totalCount,
+        acl: {
+          ownerCanReadRoles: canReadRoleCatalog(ownerPermissions),
+          managerCanReadRoles: canReadRoleCatalog(managerPermissions),
+          managerCanAssign: {
+            operator: canAssignTenantUserRole(managerPermissions, 'operator'),
+            viewer: canAssignTenantUserRole(managerPermissions, 'viewer'),
+            manager: canAssignTenantUserRole(managerPermissions, 'manager')
+          },
+          viewerCanManageUsers: viewerPermissions.includes('users.manage')
+        }
       },
       null,
       2
     )
   );
+  } finally {
+    if (tenantIdForCleanup && tempSaleIds.length) {
+      const tenantId = tenantIdForCleanup;
+      await safeCleanup('temp sales', () => cleanupSalesCascade(tenantId, tempSaleIds));
+    }
+
+    if (tenantIdForCleanup && tempEmployeeIds.length) {
+      const tenantId = tenantIdForCleanup;
+      await safeCleanup('temp employees', async () => {
+        await prisma.employee.deleteMany({
+          where: {
+            tenantId,
+            id: { in: tempEmployeeIds }
+          }
+        });
+      });
+    }
+  }
 }
 
 main()

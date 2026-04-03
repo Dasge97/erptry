@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  getAccessValidationChecks,
+  getAccessReviewStorageKey,
+  getNextVisitedAccessRoles,
+  getAccessReviewTimeline,
   getAccessReviewSummary,
   getAuditActionLabel,
   getCatalogKindLabel,
@@ -19,6 +23,7 @@ import {
   getPaymentFormState,
   getPaymentMethodLabel,
   getPaymentStatusLabel,
+  getRoleLabel,
   getReleaseOperableV1ReviewCards,
   getReleaseOperableV1Checklist,
   getResourceTypeLabel,
@@ -28,7 +33,8 @@ import {
   getReservationSelectionForAssignee,
   getReservationSelectionForTask,
   getReservationTaskOptions,
-  getSaleStageLabel
+  getSaleStageLabel,
+  sanitizeAccessReviewRoles
 } from './login-panel-helpers';
 
 const employees = [
@@ -95,6 +101,13 @@ describe('login panel helpers', () => {
     expect(getReservationStatusLabel('booked')).toBe('Reservada');
   });
 
+  it('humaniza los codigos de rol para evitar jerga tecnica en usuarios y permisos', () => {
+    expect(getRoleLabel('owner')).toBe('Owner');
+    expect(getRoleLabel('manager')).toBe('Manager');
+    expect(getRoleLabel('viewer')).toBe('Viewer');
+    expect(getRoleLabel('custom_role')).toBe('custom_role');
+  });
+
   it('humaniza trazas y notificaciones para un usuario no tecnico', () => {
     expect(getNotificationSeverityLabel('warning')).toBe('Atencion');
     expect(getNotificationTypeLabel('finance')).toBe('Finanzas');
@@ -141,6 +154,12 @@ describe('login panel helpers', () => {
     ]);
   });
 
+  it('aisla la bitacora ACL por tenant en localStorage', () => {
+    expect(getAccessReviewStorageKey(' ERPTRY Demo ')).toBe('erptry.accessReviewVisitedRoles.erptry-demo');
+    expect(getAccessReviewStorageKey('Tenant QA / Norte')).toBe('erptry.accessReviewVisitedRoles.tenant-qa-norte');
+    expect(getAccessReviewStorageKey('ERPTRY Demo', ' tenant_demo_01 ')).toBe('erptry.accessReviewVisitedRoles.tenant-demo-01');
+  });
+
   it('resume el mapa de acceso actual para un perfil viewer', () => {
     expect(getAccessReviewSummary({
       actorRole: 'viewer',
@@ -163,7 +182,7 @@ describe('login panel helpers', () => {
         'Auditoria'
       ],
       manageAreas: [],
-      hiddenAreas: ['Ajustes', 'Usuarios y permisos'],
+      hiddenAreas: ['Ajustes', 'Usuarios', 'Roles y permisos'],
       nextStep: 'Vuelve despues con owner o manager para confirmar que reaparecen gestion, usuarios y acciones de alta.'
     });
   });
@@ -178,7 +197,7 @@ describe('login panel helpers', () => {
       profileSummary: 'Gestiona la operacion diaria y el circuito comercial sin tocar la administracion global del tenant.',
       roleLabel: 'Manager',
       visibleAreas: [
-        'Usuarios y permisos',
+        'Usuarios',
         'Clientes, catalogo y ventas',
         'Facturacion',
         'Cobros',
@@ -191,7 +210,7 @@ describe('login panel helpers', () => {
         'Auditoria'
       ],
       manageAreas: [
-        'Usuarios y permisos',
+        'Usuarios',
         'Clientes, catalogo y ventas',
         'Facturacion',
         'Cobros',
@@ -200,8 +219,418 @@ describe('login panel helpers', () => {
         'Agenda',
         'Avisos'
       ],
-      hiddenAreas: ['Ajustes'],
+      hiddenAreas: ['Ajustes', 'Roles y permisos'],
       nextStep: 'Tras este repaso, cambia a viewer para confirmar que ajustes, usuarios y acciones de gestion desaparecen con copy comprensible.'
+    });
+  });
+
+  it('orienta el siguiente paso cuando el perfil activo no pertenece al recorrido ACL obligatorio', () => {
+    expect(getAccessReviewSummary({
+      actorRole: 'operator',
+      actorEmail: 'operator@erptry.local',
+      permissions: ['sales.view', 'billing.view', 'payments.view']
+    }).nextStep).toBe(
+      'Este perfil no forma parte del recorrido ACL obligatorio. Vuelve a owner y continua con manager y viewer para cerrar el repaso.'
+    );
+  });
+
+  it('mantiene separadas las superficies de usuarios y roles en el repaso owner -> manager -> viewer', () => {
+    const ownerSummary = getAccessReviewSummary({
+      actorRole: 'owner',
+      actorEmail: 'owner@erptry.local',
+      permissions: [
+        'settings.manage',
+        'users.manage',
+        'roles.manage',
+        'sales.view',
+        'sales.manage',
+        'billing.view',
+        'billing.manage',
+        'payments.view',
+        'payments.manage',
+        'employees.view',
+        'employees.manage',
+        'tasks.view',
+        'tasks.manage',
+        'reservations.view',
+        'reservations.manage',
+        'analytics.view',
+        'reports.view',
+        'notifications.view',
+        'notifications.manage',
+        'audit.view',
+        'audit.manage'
+      ]
+    });
+    const managerSummary = getAccessReviewSummary({
+      actorRole: 'manager',
+      actorEmail: 'manager@erptry.local',
+      permissions: [
+        'users.manage',
+        'sales.view',
+        'sales.manage',
+        'billing.view',
+        'billing.manage',
+        'payments.view',
+        'payments.manage',
+        'employees.view',
+        'employees.manage',
+        'tasks.view',
+        'tasks.manage',
+        'reservations.view',
+        'reservations.manage',
+        'analytics.view',
+        'reports.view',
+        'notifications.view',
+        'notifications.manage',
+        'audit.view'
+      ]
+    });
+    const viewerSummary = getAccessReviewSummary({
+      actorRole: 'viewer',
+      actorEmail: 'viewer@erptry.local',
+      permissions: [
+        'sales.view',
+        'billing.view',
+        'payments.view',
+        'employees.view',
+        'tasks.view',
+        'reservations.view',
+        'analytics.view',
+        'reports.view',
+        'notifications.view',
+        'audit.view'
+      ]
+    });
+
+    expect(ownerSummary.manageAreas).toContain('Usuarios');
+    expect(ownerSummary.manageAreas).toContain('Roles y permisos');
+    expect(ownerSummary.hiddenAreas).not.toContain('Roles y permisos');
+    expect(managerSummary.manageAreas).toContain('Usuarios');
+    expect(managerSummary.manageAreas).not.toContain('Roles y permisos');
+    expect(managerSummary.hiddenAreas).toContain('Roles y permisos');
+    expect(viewerSummary.visibleAreas).not.toContain('Usuarios');
+    expect(viewerSummary.hiddenAreas).toEqual(expect.arrayContaining(['Usuarios', 'Roles y permisos']));
+  });
+
+  it('expone checks de ACL en verde para owner con permisos completos', () => {
+    expect(getAccessValidationChecks({
+      actorRole: 'owner',
+      actorEmail: 'owner@erptry.local',
+      permissions: ['settings.manage', 'users.manage', 'roles.manage']
+    })).toEqual([
+      {
+        id: 'owner-roles-manage',
+        label: 'Owner debe gestionar roles y permisos',
+        status: 'ok',
+        detail: 'roles.manage presente para revisar catalogo y reasignaciones avanzadas.'
+      },
+      {
+        id: 'owner-users-manage',
+        label: 'Owner debe gestionar usuarios',
+        status: 'ok',
+        detail: 'users.manage presente para altas y gestion completa de usuarios.'
+      },
+      {
+        id: 'owner-settings-manage',
+        label: 'Owner debe gestionar ajustes',
+        status: 'ok',
+        detail: 'settings.manage presente para validar configuracion del tenant.'
+      }
+    ]);
+  });
+
+  it('marca alertas de ACL si manager tiene alcance de plataforma indebido', () => {
+    expect(getAccessValidationChecks({
+      actorRole: 'manager',
+      actorEmail: 'manager@erptry.local',
+      permissions: ['users.manage', 'roles.manage', 'settings.manage']
+    })).toEqual([
+      {
+        id: 'manager-users-manage',
+        label: 'Manager debe poder gestionar usuarios',
+        status: 'ok',
+        detail: 'users.manage presente para altas operativas (operator/viewer).'
+      },
+      {
+        id: 'manager-no-roles-manage',
+        label: 'Manager no debe gestionar roles',
+        status: 'alert',
+        detail: 'roles.manage presente: riesgo de escalado de privilegios para manager.'
+      },
+      {
+        id: 'manager-no-settings-manage',
+        label: 'Manager no debe tocar ajustes globales',
+        status: 'alert',
+        detail: 'settings.manage presente: manager accede a configuracion global no esperada.'
+      }
+    ]);
+  });
+
+  it('marca alertas en viewer cuando aparece cualquier permiso de gestion', () => {
+    expect(getAccessValidationChecks({
+      actorRole: 'viewer',
+      actorEmail: 'viewer@erptry.local',
+      permissions: ['sales.view', 'users.manage']
+    })).toEqual([
+      {
+        id: 'viewer-no-manage',
+        label: 'Viewer debe quedar en solo lectura',
+        status: 'alert',
+        detail: 'Aparecen permisos de gestion no esperados: users.manage.'
+      },
+      {
+        id: 'viewer-no-platform-manage',
+        label: 'Viewer no debe tocar nucleo de plataforma',
+        status: 'alert',
+        detail: 'Viewer mantiene permisos de plataforma que deberian estar ocultos.'
+      }
+    ]);
+  });
+
+  it('marca el progreso owner -> manager -> viewer durante el repaso ACL', () => {
+    expect(getAccessReviewTimeline({
+      visitedRoles: ['owner'],
+      actorRole: 'manager',
+      actorEmail: 'manager@erptry.local'
+    })).toEqual({
+      completedCount: 2,
+      totalCount: 3,
+      orderStatus: 'ok',
+      orderHint: 'Orden owner -> manager -> viewer respetado en este navegador.',
+      nextStepHint: 'Siguiente perfil recomendado: Viewer.',
+      steps: [
+        {
+          id: 'owner',
+          title: 'Owner',
+          status: 'done',
+          needsReset: false,
+          detail: 'Confirma ajustes, usuarios y roles avanzados.'
+        },
+        {
+          id: 'manager',
+          title: 'Manager',
+          status: 'current',
+          needsReset: false,
+          detail: 'Valida gestion operativa sin acceso a roles ni ajustes globales.'
+        },
+        {
+          id: 'viewer',
+          title: 'Viewer',
+          status: 'pending',
+          needsReset: false,
+          detail: 'Comprueba modo lectura sin acciones de gestion.'
+        }
+      ]
+    });
+  });
+
+  it('normaliza roles visitados del repaso ACL en orden estable', () => {
+    expect(sanitizeAccessReviewRoles(['viewer', 'foo', 'owner', 'owner', 'manager'])).toEqual([
+      'viewer',
+      'owner',
+      'manager'
+    ]);
+  });
+
+  it('agrega el rol actual al progreso ACL sin duplicados', () => {
+    expect(getNextVisitedAccessRoles(['viewer', 'owner'], 'manager')).toEqual([
+      'viewer',
+      'owner',
+      'manager'
+    ]);
+    expect(getNextVisitedAccessRoles(['owner', 'manager'], 'manager')).toEqual([
+      'owner',
+      'manager'
+    ]);
+    expect(getNextVisitedAccessRoles(['owner', 'manager'], undefined)).toEqual([
+      'owner',
+      'manager'
+    ]);
+  });
+
+  it('detecta saltos de orden en el repaso ACL y pide reinicio', () => {
+    expect(getAccessReviewTimeline({
+      visitedRoles: ['manager'],
+      actorRole: 'viewer',
+      actorEmail: 'viewer@erptry.local'
+    })).toEqual({
+      completedCount: 0,
+      totalCount: 3,
+      orderStatus: 'attention',
+      orderHint: 'El recorrido ACL no empezo por owner (inicio en Manager). Pulsa "Reiniciar recorrido" y repite owner -> manager -> viewer para cerrar el repaso sin huecos.',
+      nextStepHint: 'Siguiente perfil recomendado: Owner.',
+      steps: [
+        {
+          id: 'owner',
+          title: 'Owner',
+          status: 'pending',
+          needsReset: false,
+          detail: 'Confirma ajustes, usuarios y roles avanzados.'
+        },
+        {
+          id: 'manager',
+          title: 'Manager',
+          status: 'done',
+          needsReset: true,
+          detail: 'Valida gestion operativa sin acceso a roles ni ajustes globales.'
+        },
+        {
+          id: 'viewer',
+          title: 'Viewer',
+          status: 'current',
+          needsReset: true,
+          detail: 'Comprueba modo lectura sin acciones de gestion.'
+        }
+      ]
+    });
+  });
+
+  it('no marca el repaso ACL como completado si se visitaron todos los perfiles fuera de orden', () => {
+    expect(getAccessReviewTimeline({
+      visitedRoles: ['manager', 'owner'],
+      actorRole: 'viewer',
+      actorEmail: 'viewer@erptry.local'
+    })).toEqual({
+      completedCount: 0,
+      totalCount: 3,
+      orderStatus: 'attention',
+      orderHint: 'El recorrido ACL no empezo por owner (inicio en Manager). Pulsa "Reiniciar recorrido" y repite owner -> manager -> viewer para cerrar el repaso sin huecos.',
+      nextStepHint: 'Siguiente perfil recomendado: Owner.',
+      steps: [
+        {
+          id: 'owner',
+          title: 'Owner',
+          status: 'done',
+          needsReset: true,
+          detail: 'Confirma ajustes, usuarios y roles avanzados.'
+        },
+        {
+          id: 'manager',
+          title: 'Manager',
+          status: 'done',
+          needsReset: true,
+          detail: 'Valida gestion operativa sin acceso a roles ni ajustes globales.'
+        },
+        {
+          id: 'viewer',
+          title: 'Viewer',
+          status: 'current',
+          needsReset: true,
+          detail: 'Comprueba modo lectura sin acciones de gestion.'
+        }
+      ]
+    });
+  });
+
+  it('marca orden en revisar cuando se salta manager y se entra directo a viewer', () => {
+    expect(getAccessReviewTimeline({
+      visitedRoles: ['owner'],
+      actorRole: 'viewer',
+      actorEmail: 'viewer@erptry.local'
+    })).toEqual({
+      completedCount: 0,
+      totalCount: 3,
+      orderStatus: 'attention',
+      orderHint: 'Detectado salto owner -> viewer sin pasar por manager. Pulsa "Reiniciar recorrido" y repite owner -> manager -> viewer para cerrar el repaso sin huecos.',
+      nextStepHint: 'Siguiente perfil recomendado: Owner.',
+      steps: [
+        {
+          id: 'owner',
+          title: 'Owner',
+          status: 'done',
+          needsReset: true,
+          detail: 'Confirma ajustes, usuarios y roles avanzados.'
+        },
+        {
+          id: 'manager',
+          title: 'Manager',
+          status: 'pending',
+          needsReset: false,
+          detail: 'Valida gestion operativa sin acceso a roles ni ajustes globales.'
+        },
+        {
+          id: 'viewer',
+          title: 'Viewer',
+          status: 'current',
+          needsReset: true,
+          detail: 'Comprueba modo lectura sin acciones de gestion.'
+        }
+      ]
+    });
+  });
+
+  it('avisa cuando el perfil activo no pertenece al recorrido ACL obligatorio', () => {
+    expect(getAccessReviewTimeline({
+      visitedRoles: [],
+      actorRole: 'operator',
+      actorEmail: 'operator@erptry.local'
+    })).toEqual({
+      completedCount: 0,
+      totalCount: 3,
+      orderStatus: 'attention',
+      orderHint: 'El perfil actual (Operator) no forma parte del recorrido ACL obligatorio. Empieza por owner y continua con manager y viewer.',
+      nextStepHint: 'Siguiente perfil recomendado: Owner.',
+      steps: [
+        {
+          id: 'owner',
+          title: 'Owner',
+          status: 'pending',
+          needsReset: false,
+          detail: 'Confirma ajustes, usuarios y roles avanzados.'
+        },
+        {
+          id: 'manager',
+          title: 'Manager',
+          status: 'pending',
+          needsReset: false,
+          detail: 'Valida gestion operativa sin acceso a roles ni ajustes globales.'
+        },
+        {
+          id: 'viewer',
+          title: 'Viewer',
+          status: 'pending',
+          needsReset: false,
+          detail: 'Comprueba modo lectura sin acciones de gestion.'
+        }
+      ]
+    });
+  });
+
+  it('marca orden en revisar si aparece operator durante un recorrido ya iniciado', () => {
+    expect(getAccessReviewTimeline({
+      visitedRoles: ['owner'],
+      actorRole: 'operator',
+      actorEmail: 'operator@erptry.local'
+    })).toEqual({
+      completedCount: 0,
+      totalCount: 3,
+      orderStatus: 'attention',
+      orderHint: 'Detectado perfil fuera del recorrido ACL obligatorio (Operator). Pulsa "Reiniciar recorrido" y vuelve a owner para repetir owner -> manager -> viewer sin huecos.',
+      nextStepHint: 'El perfil actual no suma al recorrido ACL obligatorio. Siguiente perfil recomendado: Owner.',
+      steps: [
+        {
+          id: 'owner',
+          title: 'Owner',
+          status: 'done',
+          needsReset: true,
+          detail: 'Confirma ajustes, usuarios y roles avanzados.'
+        },
+        {
+          id: 'manager',
+          title: 'Manager',
+          status: 'pending',
+          needsReset: false,
+          detail: 'Valida gestion operativa sin acceso a roles ni ajustes globales.'
+        },
+        {
+          id: 'viewer',
+          title: 'Viewer',
+          status: 'pending',
+          needsReset: false,
+          detail: 'Comprueba modo lectura sin acciones de gestion.'
+        }
+      ]
     });
   });
 
@@ -259,6 +688,62 @@ describe('login panel helpers', () => {
             code: 'reports.view',
             label: 'Reportes',
             capability: 'Lectura'
+          }
+        ]
+      }
+    ]);
+  });
+
+  it('deduplica permisos repetidos y mantiene orden estable por bloque', () => {
+    expect(getPermissionGroupSummary([
+      'payments.manage',
+      'users.manage',
+      'payments.manage',
+      'custom.manage',
+      'sales.view',
+      'users.manage'
+    ])).toEqual([
+      {
+        id: 'platform',
+        title: 'Plataforma',
+        items: [
+          {
+            code: 'users.manage',
+            label: 'Usuarios',
+            capability: 'Gestion'
+          }
+        ]
+      },
+      {
+        id: 'commercial',
+        title: 'Circuito comercial',
+        items: [
+          {
+            code: 'sales.view',
+            label: 'Clientes, catalogo y ventas',
+            capability: 'Lectura'
+          }
+        ]
+      },
+      {
+        id: 'billing',
+        title: 'Facturacion y cobros',
+        items: [
+          {
+            code: 'payments.manage',
+            label: 'Cobros',
+            capability: 'Gestion'
+          }
+        ]
+      },
+      {
+        id: 'other',
+        title: 'Permisos adicionales',
+        items: [
+          {
+            code: 'custom.manage',
+            label: 'custom.manage',
+            capability: 'Gestion'
           }
         ]
       }
@@ -668,8 +1153,9 @@ describe('login panel helpers', () => {
         module: 'Roles operativos y acceso restringido',
         detail: 'Usa las cuentas demo owner, manager, operator y viewer para comprobar que el backoffice expone solo lo que cada perfil debe ver y entender.',
         checks: [
-          'Cierra sesion y entra como viewer para confirmar que desaparecen ajustes, usuarios y acciones de gestion.',
-          'Vuelve con owner o manager y verifica que permisos, roles y textos de acceso denegado siguen siendo comprensibles.'
+          'Cierra sesion y entra como manager para confirmar que mantiene usuarios pero no puede consultar roles ni reasignar perfiles altos.',
+          'Despues entra como viewer para validar que desaparecen ajustes, usuarios y acciones de gestion con copy comprensible.',
+          'Valida tambien el desvio owner -> operator: Progreso del repaso ACL debe quedar en orden revisar y pedir reinicio desde owner.'
         ],
         targetSectionId: 'access-section',
         targetLabel: 'Revisar perfiles demo',

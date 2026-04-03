@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { listRoles, listTenantUsers, updateTenantUserRole } from './platform-service';
+import { canAssignTenantUserRole, canReadRoleCatalog, listRoles, listTenantUsers, updateTenantUserRole } from './platform-service';
 
 describe('listTenantUsers', () => {
   it('normaliza los usuarios y sus roles', async () => {
@@ -84,5 +84,26 @@ describe('updateTenantUserRole', () => {
     const user = await updateTenantUserRole(prisma as never, 'tenant_1', 'user_1', 'admin');
 
     expect(user?.roles).toEqual(['admin']);
+  });
+});
+
+describe('platform access helpers', () => {
+  it('permite asignar cualquier rol cuando existe roles.manage', () => {
+    expect(canAssignTenantUserRole(['users.manage', 'roles.manage'], 'admin')).toBe(true);
+    expect(canAssignTenantUserRole(['roles.manage'], 'owner')).toBe(true);
+  });
+
+  it('restringe la asignacion de roles altos cuando solo existe users.manage', () => {
+    expect(canAssignTenantUserRole(['users.manage'], 'viewer')).toBe(true);
+    expect(canAssignTenantUserRole(['users.manage'], 'operator')).toBe(true);
+    expect(canAssignTenantUserRole(['users.manage'], 'manager')).toBe(false);
+    expect(canAssignTenantUserRole(['users.manage'], 'admin')).toBe(false);
+    expect(canAssignTenantUserRole(['users.manage'], 'owner')).toBe(false);
+  });
+
+  it('solo expone el catalogo de roles a quien tiene roles.manage', () => {
+    expect(canReadRoleCatalog(['users.manage', 'roles.manage'])).toBe(true);
+    expect(canReadRoleCatalog(['users.manage'])).toBe(false);
+    expect(canReadRoleCatalog(['sales.view'])).toBe(false);
   });
 });

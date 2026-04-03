@@ -207,6 +207,32 @@ export type AccessReviewSummary = {
   nextStep: string;
 };
 
+export type AccessValidationCheck = {
+  id: string;
+  label: string;
+  status: 'ok' | 'alert';
+  detail: string;
+};
+
+export type AccessReviewTimelineStep = {
+  id: 'owner' | 'manager' | 'viewer';
+  title: string;
+  status: 'done' | 'current' | 'pending';
+  needsReset: boolean;
+  detail: string;
+};
+
+export type AccessReviewTimeline = {
+  completedCount: number;
+  totalCount: number;
+  orderStatus: 'ok' | 'attention';
+  orderHint: string;
+  nextStepHint: string;
+  steps: AccessReviewTimelineStep[];
+};
+
+export type AccessReviewRole = 'owner' | 'manager' | 'viewer';
+
 export type PermissionGroupSummary = {
   id: string;
   title: string;
@@ -215,6 +241,14 @@ export type PermissionGroupSummary = {
     label: string;
     capability: 'Gestion' | 'Lectura';
   }>;
+};
+
+const roleLabels: Record<'owner' | 'admin' | 'manager' | 'operator' | 'viewer', string> = {
+  owner: 'Owner',
+  admin: 'Admin',
+  manager: 'Manager',
+  operator: 'Operator',
+  viewer: 'Viewer'
 };
 
 const catalogKindLabels: Record<'product' | 'service', string> = {
@@ -388,8 +422,36 @@ const demoAccessProfiles: DemoAccessProfile[] = [
   }
 ];
 
+function getNormalizedTenantSegment(value: string) {
+  const normalizedSegment = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return normalizedSegment || 'tenant';
+}
+
+export function getAccessReviewStorageKey(tenantName: string, tenantId?: string) {
+  if (tenantId && tenantId.trim().length > 0) {
+    return `erptry.accessReviewVisitedRoles.${getNormalizedTenantSegment(tenantId)}`;
+  }
+
+  const normalizedTenantName = getNormalizedTenantSegment(tenantName);
+
+  return `erptry.accessReviewVisitedRoles.${normalizedTenantName}`;
+}
+
 export function getDemoAccessProfiles() {
   return demoAccessProfiles;
+}
+
+export function getRoleLabel(roleCode: string) {
+  return roleLabels[roleCode as keyof typeof roleLabels] ?? roleCode;
+}
+
+function getAccessActorLabel(role: 'owner' | 'admin' | 'manager' | 'operator' | 'viewer') {
+  return roleLabels[role] ?? role;
 }
 
 export function getAccessReviewSummary(input: {
@@ -407,9 +469,14 @@ export function getAccessReviewSummary(input: {
       manage: ['settings.manage']
     },
     {
-      label: 'Usuarios y permisos',
-      view: ['users.manage', 'roles.manage'],
-      manage: ['users.manage', 'roles.manage']
+      label: 'Usuarios',
+      view: ['users.manage'],
+      manage: ['users.manage']
+    },
+    {
+      label: 'Roles y permisos',
+      view: ['roles.manage'],
+      manage: ['roles.manage']
     },
     {
       label: 'Clientes, catalogo y ventas',
@@ -474,6 +541,7 @@ export function getAccessReviewSummary(input: {
         : input.actorRole === 'operator'
           ? 'Operator'
           : 'Viewer';
+  const isTrackedAclRole = input.actorRole === 'owner' || input.actorRole === 'manager' || input.actorRole === 'viewer';
 
   return {
     profileTitle: profile?.title ?? `${roleLabel} activo`,
@@ -482,16 +550,285 @@ export function getAccessReviewSummary(input: {
     visibleAreas,
     manageAreas,
     hiddenAreas,
-    nextStep: input.actorRole === 'viewer'
+    nextStep: !isTrackedAclRole
+      ? 'Este perfil no forma parte del recorrido ACL obligatorio. Vuelve a owner y continua con manager y viewer para cerrar el repaso.'
+      : input.actorRole === 'viewer'
       ? 'Vuelve despues con owner o manager para confirmar que reaparecen gestion, usuarios y acciones de alta.'
       : 'Tras este repaso, cambia a viewer para confirmar que ajustes, usuarios y acciones de gestion desaparecen con copy comprensible.'
   };
 }
 
+export function getAccessValidationChecks(input: {
+  actorRole: 'owner' | 'admin' | 'manager' | 'operator' | 'viewer';
+  actorEmail: string;
+  permissions: string[];
+}): AccessValidationCheck[] {
+  const normalizedEmail = input.actorEmail.trim().toLowerCase();
+  const permissionSet = new Set(input.permissions);
+  const has = (permission: string) => permissionSet.has(permission);
+  const checks: AccessValidationCheck[] = [];
+
+  if (input.actorRole === 'owner' || normalizedEmail === 'owner@erptry.local') {
+    checks.push({
+      id: 'owner-roles-manage',
+      label: 'Owner debe gestionar roles y permisos',
+      status: has('roles.manage') ? 'ok' : 'alert',
+      detail: has('roles.manage')
+        ? 'roles.manage presente para revisar catalogo y reasignaciones avanzadas.'
+        : 'Falta roles.manage y el repaso owner queda incompleto.'
+    });
+    checks.push({
+      id: 'owner-users-manage',
+      label: 'Owner debe gestionar usuarios',
+      status: has('users.manage') ? 'ok' : 'alert',
+      detail: has('users.manage')
+        ? 'users.manage presente para altas y gestion completa de usuarios.'
+        : 'Falta users.manage y no se puede validar el alta operativa.'
+    });
+    checks.push({
+      id: 'owner-settings-manage',
+      label: 'Owner debe gestionar ajustes',
+      status: has('settings.manage') ? 'ok' : 'alert',
+      detail: has('settings.manage')
+        ? 'settings.manage presente para validar configuracion del tenant.'
+        : 'Falta settings.manage y el nucleo de plataforma no queda validado.'
+    });
+
+    return checks;
+  }
+
+  if (input.actorRole === 'manager' || normalizedEmail === 'manager@erptry.local') {
+    checks.push({
+      id: 'manager-users-manage',
+      label: 'Manager debe poder gestionar usuarios',
+      status: has('users.manage') ? 'ok' : 'alert',
+      detail: has('users.manage')
+        ? 'users.manage presente para altas operativas (operator/viewer).'
+        : 'Falta users.manage y no se puede validar la gestion operativa esperada.'
+    });
+    checks.push({
+      id: 'manager-no-roles-manage',
+      label: 'Manager no debe gestionar roles',
+      status: has('roles.manage') ? 'alert' : 'ok',
+      detail: has('roles.manage')
+        ? 'roles.manage presente: riesgo de escalado de privilegios para manager.'
+        : 'Sin roles.manage, la separacion Usuarios vs Roles y permisos se mantiene.'
+    });
+    checks.push({
+      id: 'manager-no-settings-manage',
+      label: 'Manager no debe tocar ajustes globales',
+      status: has('settings.manage') ? 'alert' : 'ok',
+      detail: has('settings.manage')
+        ? 'settings.manage presente: manager accede a configuracion global no esperada.'
+        : 'Sin settings.manage, la configuracion global queda reservada a owner.'
+    });
+
+    return checks;
+  }
+
+  if (input.actorRole === 'viewer' || normalizedEmail === 'viewer@erptry.local') {
+    const managePermissions = input.permissions.filter((permission) => permission.endsWith('.manage'));
+    const hasPlatformManagement = has('users.manage') || has('roles.manage') || has('settings.manage');
+
+    checks.push({
+      id: 'viewer-no-manage',
+      label: 'Viewer debe quedar en solo lectura',
+      status: managePermissions.length > 0 ? 'alert' : 'ok',
+      detail: managePermissions.length > 0
+        ? `Aparecen permisos de gestion no esperados: ${managePermissions.join(', ')}.`
+        : 'Sin permisos .manage, el perfil viewer queda realmente en lectura.'
+    });
+    checks.push({
+      id: 'viewer-no-platform-manage',
+      label: 'Viewer no debe tocar nucleo de plataforma',
+      status: hasPlatformManagement ? 'alert' : 'ok',
+      detail: hasPlatformManagement
+        ? 'Viewer mantiene permisos de plataforma que deberian estar ocultos.'
+        : 'Sin gestion de ajustes, usuarios ni roles para viewer.'
+    });
+
+    return checks;
+  }
+
+  checks.push({
+    id: 'generic-authenticated',
+    label: 'Perfil autenticado fuera del seed demo',
+    status: 'ok',
+    detail: 'Usa Mapa de acceso actual y Permisos visibles para contrastar alcance real de este rol.'
+  });
+
+  return checks;
+}
+
+export function getAccessReviewTimeline(input: {
+  visitedRoles: AccessReviewRole[];
+  actorRole: 'owner' | 'admin' | 'manager' | 'operator' | 'viewer';
+  actorEmail: string;
+}): AccessReviewTimeline {
+  const orderedRoles: AccessReviewRole[] = ['owner', 'manager', 'viewer'];
+  const normalizedEmail = input.actorEmail.trim().toLowerCase();
+  const currentRole = input.actorRole === 'owner' || input.actorRole === 'manager' || input.actorRole === 'viewer'
+    ? input.actorRole
+    : normalizedEmail === 'owner@erptry.local'
+      ? 'owner'
+      : normalizedEmail === 'manager@erptry.local'
+        ? 'manager'
+        : normalizedEmail === 'viewer@erptry.local'
+          ? 'viewer'
+          : undefined;
+  const visitedRoles = sanitizeAccessReviewRoles(input.visitedRoles);
+
+  if (currentRole && !visitedRoles.includes(currentRole)) {
+    visitedRoles.push(currentRole);
+  }
+
+  const visitedSet = new Set(visitedRoles);
+  const isTrackedRole = Boolean(currentRole);
+  const visitedIndexes = new Map(visitedRoles.map((role, index) => [role, index]));
+  const roleIndexes = orderedRoles
+    .map((role) => ({ role, index: visitedIndexes.get(role) }))
+    .filter((entry): entry is { role: AccessReviewRole; index: number } => entry.index !== undefined)
+    .sort((left, right) => left.index - right.index);
+  let orderStatus: 'ok' | 'attention' = 'ok';
+
+  for (let index = 1; index < roleIndexes.length; index += 1) {
+    const previousRole = roleIndexes[index - 1];
+    const currentRoleInHistory = roleIndexes[index];
+
+    if (!previousRole || !currentRoleInHistory) {
+      continue;
+    }
+
+    const previousExpectedIndex = orderedRoles.indexOf(previousRole.role);
+    const currentExpectedIndex = orderedRoles.indexOf(currentRoleInHistory.role);
+
+    if (currentExpectedIndex !== previousExpectedIndex + 1) {
+      orderStatus = 'attention';
+      break;
+    }
+  }
+
+  const firstVisitedRole = roleIndexes[0]?.role;
+
+  if (orderStatus === 'ok' && firstVisitedRole && firstVisitedRole !== 'owner') {
+    orderStatus = 'attention';
+  }
+
+  if (!isTrackedRole) {
+    orderStatus = 'attention';
+  }
+
+  const steps: AccessReviewTimelineStep[] = orderedRoles.map((role) => {
+    const status = role === currentRole
+      ? 'current'
+      : visitedSet.has(role)
+        ? 'done'
+        : 'pending';
+    const title = role === 'owner' ? 'Owner' : role === 'manager' ? 'Manager' : 'Viewer';
+
+    return {
+      id: role,
+      title,
+      status,
+      needsReset: orderStatus === 'attention' && status !== 'pending',
+      detail: role === 'owner'
+        ? 'Confirma ajustes, usuarios y roles avanzados.'
+        : role === 'manager'
+          ? 'Valida gestion operativa sin acceso a roles ni ajustes globales.'
+          : 'Comprueba modo lectura sin acciones de gestion.'
+    };
+  });
+
+  const completedCount = orderStatus === 'ok'
+    ? orderedRoles.reduce((count, role) => {
+      if (count === orderedRoles.indexOf(role) && visitedSet.has(role)) {
+        return count + 1;
+      }
+
+      return count;
+    }, 0)
+    : 0;
+  const nextPending = steps.find((step) => step.status === 'pending');
+
+  if (!isTrackedRole && visitedRoles.length === 0) {
+    return {
+      completedCount,
+      totalCount: orderedRoles.length,
+      orderStatus: 'attention',
+      orderHint: `El perfil actual (${getAccessActorLabel(input.actorRole)}) no forma parte del recorrido ACL obligatorio. Empieza por owner y continua con manager y viewer.`,
+      nextStepHint: 'Siguiente perfil recomendado: Owner.',
+      steps
+    };
+  }
+
+  const orderHint = !isTrackedRole
+    ? `Detectado perfil fuera del recorrido ACL obligatorio (${getAccessActorLabel(input.actorRole)}). Pulsa "Reiniciar recorrido" y vuelve a owner para repetir owner -> manager -> viewer sin huecos.`
+    : orderStatus === 'ok'
+      ? 'Orden owner -> manager -> viewer respetado en este navegador.'
+      : currentRole === 'viewer' && visitedSet.has('owner') && !visitedSet.has('manager')
+        ? 'Detectado salto owner -> viewer sin pasar por manager. Pulsa "Reiniciar recorrido" y repite owner -> manager -> viewer para cerrar el repaso sin huecos.'
+        : firstVisitedRole && firstVisitedRole !== 'owner'
+          ? `El recorrido ACL no empezo por owner (inicio en ${firstVisitedRole === 'manager' ? 'Manager' : 'Viewer'}). Pulsa "Reiniciar recorrido" y repite owner -> manager -> viewer para cerrar el repaso sin huecos.`
+          : 'Detectado un salto de orden en este navegador. Pulsa "Reiniciar recorrido" y repite owner -> manager -> viewer para cerrar el repaso sin huecos.';
+
+  const nextStepHint = orderStatus === 'attention'
+    ? 'Siguiente perfil recomendado: Owner.'
+    : nextPending
+      ? `Siguiente perfil recomendado: ${nextPending.title}.`
+      : 'Recorrido ACL owner -> manager -> viewer completado. Puedes cerrar el repaso visual final.';
+
+  return {
+    completedCount,
+    totalCount: orderedRoles.length,
+    orderStatus,
+    orderHint,
+    nextStepHint: isTrackedRole
+      ? nextStepHint
+      : `El perfil actual no suma al recorrido ACL obligatorio. ${nextStepHint}`,
+    steps
+  };
+}
+
+export function sanitizeAccessReviewRoles(roles: string[]): AccessReviewRole[] {
+  const orderedRoles: AccessReviewRole[] = ['owner', 'manager', 'viewer'];
+  const seenRoles = new Set<string>();
+  const sanitizedRoles: AccessReviewRole[] = [];
+
+  roles.forEach((role) => {
+    if (!orderedRoles.includes(role as AccessReviewRole) || seenRoles.has(role)) {
+      return;
+    }
+
+    sanitizedRoles.push(role as AccessReviewRole);
+    seenRoles.add(role);
+  });
+
+  return sanitizedRoles;
+}
+
+export function getNextVisitedAccessRoles(
+  currentRoles: string[],
+  currentRole: AccessReviewRole | undefined
+): AccessReviewRole[] {
+  const sanitizedRoles = sanitizeAccessReviewRoles(currentRoles);
+
+  if (!currentRole || sanitizedRoles.includes(currentRole)) {
+    return sanitizedRoles;
+  }
+
+  return sanitizeAccessReviewRoles([...sanitizedRoles, currentRole]);
+}
+
 export function getPermissionGroupSummary(permissions: string[]): PermissionGroupSummary[] {
+  const orderedGroupIds = ['platform', 'commercial', 'billing', 'operations', 'control', 'other'] as const;
+  const capabilityOrder: Record<'Lectura' | 'Gestion', number> = {
+    Lectura: 0,
+    Gestion: 1
+  };
+  const uniquePermissionCodes = Array.from(new Set(permissions));
   const groups = new Map<string, PermissionGroupSummary>();
 
-  permissions.forEach((permissionCode) => {
+  uniquePermissionCodes.forEach((permissionCode) => {
     const permission = permissionCatalog[permissionCode] ?? {
       groupId: 'other',
       groupTitle: 'Permisos adicionales',
@@ -517,10 +854,37 @@ export function getPermissionGroupSummary(permissions: string[]): PermissionGrou
     existingGroup.items.push(item);
   });
 
-  return Array.from(groups.values()).map((group) => ({
-    ...group,
-    items: group.items.sort((left, right) => left.label.localeCompare(right.label, 'es'))
-  }));
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      items: group.items.sort((left, right) => {
+        const labelOrder = left.label.localeCompare(right.label, 'es');
+
+        if (labelOrder !== 0) {
+          return labelOrder;
+        }
+
+        return capabilityOrder[left.capability] - capabilityOrder[right.capability];
+      })
+    }))
+    .sort((left, right) => {
+      const leftOrder = orderedGroupIds.indexOf(left.id as (typeof orderedGroupIds)[number]);
+      const rightOrder = orderedGroupIds.indexOf(right.id as (typeof orderedGroupIds)[number]);
+
+      if (leftOrder === rightOrder) {
+        return left.title.localeCompare(right.title, 'es');
+      }
+
+      if (leftOrder === -1) {
+        return 1;
+      }
+
+      if (rightOrder === -1) {
+        return -1;
+      }
+
+      return leftOrder - rightOrder;
+    });
 }
 
 export function getReleaseOperableV1Checklist(state: ReleaseOperableV1ChecklistState) {
@@ -831,8 +1195,9 @@ export function getReleaseOperableV1ReviewCards(input: {
       module: 'Roles operativos y acceso restringido',
       detail: 'Usa las cuentas demo owner, manager, operator y viewer para comprobar que el backoffice expone solo lo que cada perfil debe ver y entender.',
       checks: [
-        'Cierra sesion y entra como viewer para confirmar que desaparecen ajustes, usuarios y acciones de gestion.',
-        'Vuelve con owner o manager y verifica que permisos, roles y textos de acceso denegado siguen siendo comprensibles.'
+        'Cierra sesion y entra como manager para confirmar que mantiene usuarios pero no puede consultar roles ni reasignar perfiles altos.',
+        'Despues entra como viewer para validar que desaparecen ajustes, usuarios y acciones de gestion con copy comprensible.',
+        'Valida tambien el desvio owner -> operator: Progreso del repaso ACL debe quedar en orden revisar y pedir reinicio desde owner.'
       ],
       targetSectionId: 'access-section',
       targetLabel: 'Revisar perfiles demo',

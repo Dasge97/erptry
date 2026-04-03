@@ -3,6 +3,24 @@ import type { PrismaClient } from '@prisma/client';
 import { roleSummarySchema, tenantOverviewSchema, userSummarySchema } from '@erptry/contracts';
 import bcrypt from 'bcryptjs';
 
+const restrictedUserManagementRoleCodes = new Set(['operator', 'viewer']);
+
+export function canAssignTenantUserRole(permissionCodes: string[], roleCode: string) {
+  if (permissionCodes.includes('roles.manage')) {
+    return true;
+  }
+
+  if (!permissionCodes.includes('users.manage')) {
+    return false;
+  }
+
+  return restrictedUserManagementRoleCodes.has(roleCode);
+}
+
+export function canReadRoleCatalog(permissionCodes: string[]) {
+  return permissionCodes.includes('roles.manage');
+}
+
 export async function getTenantOverview(prisma: PrismaClient, tenantId: string) {
   const [tenant, totalUsers, activeSessions] = await Promise.all([
     prisma.tenant.findUnique({ where: { id: tenantId } }),
