@@ -178,3 +178,28 @@ export const createClientRequestSchema = z.object({
 });
 
 export type CreateClientRequest = z.infer<typeof createClientRequestSchema>;
+
+export const catalogItemSummarySchema = z.object({
+  id: z.string().min(1),
+  tenantId: z.string().min(1),
+  name: z.string().min(1),
+  kind: z.enum(['product', 'service']),
+  priceCents: z.number().int().nonnegative(),
+  durationMin: z.number().int().positive().nullable(),
+  status: z.enum(['active', 'archived']),
+  sku: z.string().nullable(),
+  notes: z.string().nullable()
+});
+
+export type CatalogItemSummary = z.infer<typeof catalogItemSummarySchema>;
+
+export const createCatalogItemRequestSchema = z.object({
+  name: z.string().min(1),
+  kind: z.enum(['product', 'service']),
+  priceCents: z.number().int().nonnegative(),
+  durationMin: z.number().int().positive().optional().nullable(),
+  sku: z.string().optional().or(z.literal('')),
+  notes: z.string().optional().or(z.literal(''))
+});
+
+export type CreateCatalogItemRequest = z.infer<typeof createCatalogItemRequestSchema>;

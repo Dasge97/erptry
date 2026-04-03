@@ -45,6 +45,16 @@ type LoginState =
         segment: string;
         notes: string | null;
       }>;
+      catalogItems: Array<{
+        id: string;
+        name: string;
+        kind: 'product' | 'service';
+        priceCents: number;
+        durationMin: number | null;
+        status: 'active' | 'archived';
+        sku: string | null;
+        notes: string | null;
+      }>;
     };
 
 type CreateUserState =
@@ -73,6 +83,12 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
   const [clientPhone, setClientPhone] = useState('600222333');
   const [clientSegment, setClientSegment] = useState('general');
   const [clientNotes, setClientNotes] = useState('Alta desde el backoffice.');
+  const [itemName, setItemName] = useState('Auditoria premium');
+  const [itemKind, setItemKind] = useState<'product' | 'service'>('service');
+  const [itemPriceCents, setItemPriceCents] = useState(18000);
+  const [itemDurationMin, setItemDurationMin] = useState(90);
+  const [itemSku, setItemSku] = useState('SERV-090');
+  const [itemNotes, setItemNotes] = useState('Servicio de analisis inicial.');
 
   async function loadRoles(token: string) {
     const response = await fetch(`${apiBaseUrl}/api/platform/roles`, {
@@ -118,6 +134,33 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
       email: string | null;
       phone: string | null;
       segment: string;
+      notes: string | null;
+    }>;
+  }
+
+  async function loadCatalogItems(token: string) {
+    const response = await fetch(`${apiBaseUrl}/api/catalog/list`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({ token })
+    });
+
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload.message ?? 'No se pudo cargar el catalogo.');
+    }
+
+    return payload as Array<{
+      id: string;
+      name: string;
+      kind: 'product' | 'service';
+      priceCents: number;
+      durationMin: number | null;
+      status: 'active' | 'archived';
+      sku: string | null;
       notes: string | null;
     }>;
   }
@@ -229,6 +272,7 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
       const settings = await loadSettings(loginPayload.token);
       const rolesCatalog = await loadRoles(loginPayload.token);
       const clients = await loadClients(loginPayload.token);
+      const catalogItems = await loadCatalogItems(loginPayload.token);
 
       setBrandingName(settings.brandingName);
       setDefaultLocale(settings.defaultLocale);
@@ -245,7 +289,8 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
         settings,
         rolesCatalog,
         users,
-        clients
+        clients,
+        catalogItems
       });
     } catch {
       setState({ status: 'error', message: 'La API no esta disponible ahora mismo.' });
@@ -339,6 +384,53 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
         clients
       });
       setCreateUserState({ status: 'success', message: 'Cliente creado.' });
+    } catch {
+      setCreateUserState({ status: 'error', message: 'La API no esta disponible ahora mismo.' });
+    }
+  }
+
+  async function handleCreateCatalogItem(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (state.status !== 'success') {
+      return;
+    }
+
+    setCreateUserState({ status: 'loading' });
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/catalog/create`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          token: state.token,
+          item: {
+            name: itemName,
+            kind: itemKind,
+            priceCents: itemPriceCents,
+            durationMin: itemKind === 'service' ? itemDurationMin : null,
+            sku: itemSku,
+            notes: itemNotes
+          }
+        })
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        setCreateUserState({ status: 'error', message: payload.message ?? 'No se pudo crear el item.' });
+        return;
+      }
+
+      const catalogItems = await loadCatalogItems(state.token);
+
+      setState({
+        ...state,
+        catalogItems
+      });
+      setCreateUserState({ status: 'success', message: 'Item de catalogo creado.' });
     } catch {
       setCreateUserState({ status: 'error', message: 'La API no esta disponible ahora mismo.' });
     }
@@ -617,6 +709,59 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
               </label>
               <button type="submit" disabled={createUserState.status === 'loading'}>
                 Crear cliente
+              </button>
+            </form>
+          </section>
+          <section className="users-section">
+            <div className="users-section__header">
+              <h3>Productos y servicios</h3>
+              <p>Segundo vertical comercial para preparar ventas y presupuestos.</p>
+            </div>
+            <div className="users-grid">
+              {state.catalogItems.map((item) => (
+                <article key={item.id} className="user-card">
+                  <strong>{item.name}</strong>
+                  <span>{item.kind}</span>
+                  <span>{(item.priceCents / 100).toFixed(2)} EUR</span>
+                  {item.durationMin ? <span>{item.durationMin} min</span> : null}
+                  <div className="permission-list">
+                    <span className="module-pill module-pill--accent">{item.status}</span>
+                    {item.sku ? <span className="module-pill">{item.sku}</span> : null}
+                  </div>
+                  {item.notes ? <span>{item.notes}</span> : null}
+                </article>
+              ))}
+            </div>
+            <form className="create-user-form" onSubmit={handleCreateCatalogItem}>
+              <label>
+                <span>Nombre</span>
+                <input value={itemName} onChange={(event) => setItemName(event.target.value)} type="text" />
+              </label>
+              <label>
+                <span>Tipo</span>
+                <select value={itemKind} onChange={(event) => setItemKind(event.target.value as 'product' | 'service')}>
+                  <option value="service">service</option>
+                  <option value="product">product</option>
+                </select>
+              </label>
+              <label>
+                <span>Precio (centimos)</span>
+                <input value={itemPriceCents} onChange={(event) => setItemPriceCents(Number(event.target.value))} type="number" />
+              </label>
+              <label>
+                <span>Duracion</span>
+                <input value={itemDurationMin} onChange={(event) => setItemDurationMin(Number(event.target.value))} type="number" />
+              </label>
+              <label>
+                <span>SKU</span>
+                <input value={itemSku} onChange={(event) => setItemSku(event.target.value)} type="text" />
+              </label>
+              <label>
+                <span>Notas</span>
+                <input value={itemNotes} onChange={(event) => setItemNotes(event.target.value)} type="text" />
+              </label>
+              <button type="submit" disabled={createUserState.status === 'loading'}>
+                Crear item
               </button>
             </form>
           </section>

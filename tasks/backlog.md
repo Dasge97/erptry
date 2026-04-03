@@ -2,7 +2,7 @@
 
 ## in_progress
 
-- abrir el siguiente vertical comercial sobre la base de `clients`.
+- abrir `sales` para unir clientes y catalogo en un flujo comercial real.
 
 ## pending
 
@@ -15,6 +15,7 @@
 - exponer gestion de roles y permisos base.
 - abrir el primer modulo de negocio vertical sobre este nucleo.
 - modelar `products-services` y su relacion con clientes.
+- modelar `sales` y su relacion con clientes y catalogo.
 
 ## blocked
 
@@ -31,4 +32,5 @@
 - primer CRUD base de usuarios del tenant desde API y web;
 - ajustes persistidos, reasignacion de roles y logout de sesion;
 - vertical `clients` operativo en API, seed y backoffice;
+- vertical `products-services` operativo en API, seed y backoffice;
 - calidad minima validada con typecheck, test, lint y build.

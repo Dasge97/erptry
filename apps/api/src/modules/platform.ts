@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 
 import {
   appManifestSchema,
+  createCatalogItemRequestSchema,
   createClientRequestSchema,
   createUserRequestSchema,
   healthResponseSchema,
@@ -12,6 +13,7 @@ import { createPlatformSnapshot } from '@erptry/domain';
 
 import { appConfig } from '../config';
 import { prisma } from '../lib/prisma';
+import { createCatalogItem, listCatalogItems } from '../services/catalog-service';
 import { createClient, listClients } from '../services/clients-service';
 import { resolvePersistedSession } from '../services/auth-service';
 import { createTenantUser, getTenantOverview, listRoles, listTenantUsers, updateTenantUserRole } from '../services/platform-service';
@@ -31,8 +33,8 @@ export async function registerPlatformModule(app: FastifyInstance) {
     return appManifestSchema.parse({
       name: 'ERPTRY',
       headline: 'ERP modular para operaciones, ventas y gestion multiempresa.',
-      modules: ['auth', 'users', 'roles-permissions', 'settings', 'multi-tenant', 'clients'],
-      priorities: ['bootstrap tecnico', 'nucleo de plataforma', 'vertical clients']
+      modules: ['auth', 'users', 'roles-permissions', 'settings', 'multi-tenant', 'clients', 'products-services'],
+      priorities: ['bootstrap tecnico', 'nucleo de plataforma', 'vertical clients', 'catalogo comercial']
     });
   });
 
@@ -344,5 +346,58 @@ export async function registerPlatformModule(app: FastifyInstance) {
     const createdClient = await createClient(prisma, me.tenant.id, input);
 
     return reply.code(201).send(createdClient);
+  });
+
+  app.post('/api/catalog/list', async (request, reply) => {
+    if (!appConfig.databaseUrl) {
+      return reply.code(503).send({
+        error: 'database_not_configured',
+        message: 'Configura DATABASE_URL para consultar catalogo persistido.'
+      });
+    }
+
+    const body = request.body as { token?: string };
+
+    if (typeof body.token !== 'string' || body.token.length === 0) {
+      return reply.code(400).send({ error: 'missing_token', message: 'Falta el token de sesion.' });
+    }
+
+    const me = await resolvePersistedSession(prisma, body.token);
+
+    if (!me) {
+      return reply.code(401).send({ error: 'invalid_session', message: 'La sesion no es valida o ha expirado.' });
+    }
+
+    return listCatalogItems(prisma, me.tenant.id);
+  });
+
+  app.post('/api/catalog/create', async (request, reply) => {
+    if (!appConfig.databaseUrl) {
+      return reply.code(503).send({
+        error: 'database_not_configured',
+        message: 'Configura DATABASE_URL para crear items de catalogo.'
+      });
+    }
+
+    const body = request.body as { token?: string; item?: unknown };
+
+    if (typeof body.token !== 'string' || body.token.length === 0) {
+      return reply.code(400).send({ error: 'missing_token', message: 'Falta el token de sesion.' });
+    }
+
+    const me = await resolvePersistedSession(prisma, body.token);
+
+    if (!me) {
+      return reply.code(401).send({ error: 'invalid_session', message: 'La sesion no es valida o ha expirado.' });
+    }
+
+    if (!me.permissions.includes('users.manage')) {
+      return reply.code(403).send({ error: 'forbidden', message: 'La sesion actual no puede crear items de catalogo.' });
+    }
+
+    const input = createCatalogItemRequestSchema.parse(body.item);
+    const createdItem = await createCatalogItem(prisma, me.tenant.id, input);
+
+    return reply.code(201).send(createdItem);
   });
 }

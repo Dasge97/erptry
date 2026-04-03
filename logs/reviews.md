@@ -48,3 +48,10 @@
 - carencia: todavia no hay catalogo de productos/servicios ni circuito comercial enlazado;
 - mejora aplicada: el proyecto deja de ser solo nucleo administrativo y entra en dominio de negocio real;
 - siguiente accion: levantar `products-services` y preparar su union con `clients` y `sales`.
+
+## Review 008
+
+- fortaleza: el backoffice ya cubre nucleo administrativo, clientes y catalogo comercial base;
+- carencia: todavia no existe un flujo comercial que una cliente e item en una venta u oportunidad;
+- mejora aplicada: la base queda lista para abrir `sales` con relaciones claras;
+- siguiente accion: implementar `sales` como primer flujo transversal comercial.

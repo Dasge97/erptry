@@ -13,11 +13,29 @@ model Tenant {
   name      String
   plan      TenantPlan @default(growth)
   clients   Client[]
+  catalogItems CatalogItem[]
   users     User[]
   sessions  Session[]
   settings  TenantSetting[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+}
+
+model CatalogItem {
+  id          String          @id
+  tenantId    String
+  name        String
+  kind        CatalogItemKind
+  priceCents  Int
+  durationMin Int?
+  status      CatalogItemStatus @default(active)
+  sku         String?
+  notes       String?
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([tenantId, name])
 }
 
 model Client {
@@ -124,4 +142,14 @@ enum TenantPlan {
 enum UserStatus {
   active
   suspended
+}
+
+enum CatalogItemKind {
+  product
+  service
+}
+
+enum CatalogItemStatus {
+  active
+  archived
 }

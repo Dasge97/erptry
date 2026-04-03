@@ -20,13 +20,14 @@
 - anadido el primer CRUD base de plataforma para crear y listar usuarios del tenant;
 - anadidos ajustes persistidos del tenant, reasignacion de roles y logout sobre sesiones persistidas;
 - anadido `clients` como primer vertical de negocio persistido y visible en backoffice;
+- anadido `products-services` como segundo vertical comercial con catalogo persistido y visible en backoffice;
 - validados `typecheck`, `test`, `build` y `lint`.
 
 ## Pendiente inmediato
 
 - decidir estrategia concreta de persistencia inicial;
 - empezar la capa `settings` y gestion explicita de roles/permisos sobre la base ya persistida.
-- abrir el siguiente vertical tras `clients`: `products-services` o `sales`.
+- enlazar `clients` y `products-services` dentro del primer flujo de `sales`.
 
 ## Riesgos abiertos
 
@@ -42,4 +43,4 @@
 
 ## Siguiente paso logico
 
-Profundizar el circuito comercial con `products-services` y enlazarlo despues con `clients` y `sales`.
+Entrar en `sales` para unir clientes y catalogo en oportunidades o pedidos base.

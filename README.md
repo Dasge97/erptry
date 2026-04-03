@@ -69,6 +69,7 @@ Direccion tecnica ya activada en el repositorio:
 - `apps/api` ya expone autenticacion persistida, tenant actual, listado de usuarios y alta inicial de usuarios;
 - `apps/api` ya expone catalogo de roles, reasignacion de roles y cierre de sesion persistida;
 - `apps/api` ya expone el primer vertical de negocio con `clients`;
+- `apps/api` ya expone tambien `products-services` como catalogo comercial inicial;
 - `apps/web` ya renderiza un shell inicial de backoffice;
 - `packages/contracts`, `packages/domain` y `packages/ui` ya estan conectados y probados;
 - existe validacion minima con `typecheck`, `test`, `build` y `lint` en verde;
@@ -107,6 +108,8 @@ corepack pnpm --filter @erptry/api db:seed
 - `POST /api/auth/logout`
 - `POST /api/clients/list`
 - `POST /api/clients/create`
+- `POST /api/catalog/list`
+- `POST /api/catalog/create`
 
 ## Persistencia actual
 
@@ -122,6 +125,12 @@ corepack pnpm --filter @erptry/api db:seed
 - listado de clientes por tenant;
 - alta de clientes desde backoffice;
 - seed inicial con un cliente de referencia para validar el vertical.
+
+## Vertical `products-services`
+
+- listado de productos y servicios por tenant;
+- alta inicial de items de catalogo desde backoffice;
+- seed con un servicio y un producto de referencia para preparar el circuito comercial.
 
 ## Principios de producto
 

@@ -197,6 +197,60 @@ async function main() {
     }
   });
 
+  await prisma.catalogItem.upsert({
+    where: {
+      id: 'seed-catalog-service-1'
+    },
+    update: {
+      tenantId: tenant.id,
+      name: 'Consultoria inicial',
+      kind: 'service',
+      priceCents: 12000,
+      durationMin: 60,
+      status: 'active',
+      sku: 'SERV-001',
+      notes: 'Servicio base para primeras propuestas comerciales.'
+    },
+    create: {
+      id: 'seed-catalog-service-1',
+      tenantId: tenant.id,
+      name: 'Consultoria inicial',
+      kind: 'service',
+      priceCents: 12000,
+      durationMin: 60,
+      status: 'active',
+      sku: 'SERV-001',
+      notes: 'Servicio base para primeras propuestas comerciales.'
+    }
+  });
+
+  await prisma.catalogItem.upsert({
+    where: {
+      id: 'seed-catalog-product-1'
+    },
+    update: {
+      tenantId: tenant.id,
+      name: 'Kit de implantacion',
+      kind: 'product',
+      priceCents: 45000,
+      durationMin: null,
+      status: 'active',
+      sku: 'PROD-001',
+      notes: 'Material inicial del servicio de implantacion.'
+    },
+    create: {
+      id: 'seed-catalog-product-1',
+      tenantId: tenant.id,
+      name: 'Kit de implantacion',
+      kind: 'product',
+      priceCents: 45000,
+      durationMin: null,
+      status: 'active',
+      sku: 'PROD-001',
+      notes: 'Material inicial del servicio de implantacion.'
+    }
+  });
+
   console.log(JSON.stringify({ tenantId: tenant.id, adminId: admin.id, bootstrapTokenId: randomUUID() }));
 }
 

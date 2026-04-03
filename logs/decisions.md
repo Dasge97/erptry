@@ -71,3 +71,9 @@
 - motivo: ofrece valor comercial temprano con complejidad contenida y reutiliza todo el nucleo ya construido;
 - impacto: el backoffice ya toca negocio real sin forzar aun facturacion o ventas completas;
 - consecuencia futura: `products-services` y `sales` podran conectarse despues a clientes con menos friccion.
+
+## D-013 - Abrir `products-services` antes de `sales`
+
+- motivo: vender requiere antes un catalogo base de productos y servicios reutilizable;
+- impacto: el proyecto ya puede unir clientes con una oferta comercial concreta en la siguiente fase;
+- consecuencia futura: `sales` podra nacer con relaciones claras y sin inventar conceptos en medio del flujo.

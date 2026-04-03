@@ -296,4 +296,5 @@ Estado actual del nucleo:
 - el backoffice ya puede consumir manifest, tenant actual y usuarios del tenant;
 - el backoffice ya puede actualizar ajustes del tenant, reasignar roles y cerrar sesiones;
 - `clients` ya existe como primer vertical de negocio sobre la base multi-tenant;
+- `products-services` ya existe como segundo vertical para preparar `sales` y facturacion;
 - falta cerrar migraciones de produccion, estrategia definitiva de sesiones y endurecimiento de credenciales.
