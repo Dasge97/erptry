@@ -37,6 +37,14 @@ type LoginState =
         status: string;
         roles: string[];
       }>;
+      clients: Array<{
+        id: string;
+        fullName: string;
+        email: string | null;
+        phone: string | null;
+        segment: string;
+        notes: string | null;
+      }>;
     };
 
 type CreateUserState =
@@ -60,6 +68,11 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
   const [brandingName, setBrandingName] = useState('ERPTRY Demo');
   const [defaultLocale, setDefaultLocale] = useState('es-ES');
   const [timezone, setTimezone] = useState('Europe/Madrid');
+  const [clientName, setClientName] = useState('Cliente Demo');
+  const [clientEmail, setClientEmail] = useState('cliente@demo.test');
+  const [clientPhone, setClientPhone] = useState('600222333');
+  const [clientSegment, setClientSegment] = useState('general');
+  const [clientNotes, setClientNotes] = useState('Alta desde el backoffice.');
 
   async function loadRoles(token: string) {
     const response = await fetch(`${apiBaseUrl}/api/platform/roles`, {
@@ -81,6 +94,31 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
       code: string;
       name: string;
       permissions: string[];
+    }>;
+  }
+
+  async function loadClients(token: string) {
+    const response = await fetch(`${apiBaseUrl}/api/clients/list`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({ token })
+    });
+
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload.message ?? 'No se pudieron cargar los clientes.');
+    }
+
+    return payload as Array<{
+      id: string;
+      fullName: string;
+      email: string | null;
+      phone: string | null;
+      segment: string;
+      notes: string | null;
     }>;
   }
 
@@ -190,6 +228,7 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
       const users = await loadUsers(loginPayload.token);
       const settings = await loadSettings(loginPayload.token);
       const rolesCatalog = await loadRoles(loginPayload.token);
+      const clients = await loadClients(loginPayload.token);
 
       setBrandingName(settings.brandingName);
       setDefaultLocale(settings.defaultLocale);
@@ -205,7 +244,8 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
         token: loginPayload.token,
         settings,
         rolesCatalog,
-        users
+        users,
+        clients
       });
     } catch {
       setState({ status: 'error', message: 'La API no esta disponible ahora mismo.' });
@@ -253,6 +293,52 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
         users
       });
       setCreateUserState({ status: 'success', message: 'Usuario creado y listado actualizado.' });
+    } catch {
+      setCreateUserState({ status: 'error', message: 'La API no esta disponible ahora mismo.' });
+    }
+  }
+
+  async function handleCreateClient(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (state.status !== 'success') {
+      return;
+    }
+
+    setCreateUserState({ status: 'loading' });
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/clients/create`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          token: state.token,
+          client: {
+            fullName: clientName,
+            email: clientEmail,
+            phone: clientPhone,
+            segment: clientSegment,
+            notes: clientNotes
+          }
+        })
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        setCreateUserState({ status: 'error', message: payload.message ?? 'No se pudo crear el cliente.' });
+        return;
+      }
+
+      const clients = await loadClients(state.token);
+
+      setState({
+        ...state,
+        clients
+      });
+      setCreateUserState({ status: 'success', message: 'Cliente creado.' });
     } catch {
       setCreateUserState({ status: 'error', message: 'La API no esta disponible ahora mismo.' });
     }
@@ -489,6 +575,50 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
                   ? 'Aplicando cambios...'
                   : createUserState.message}
             </p>
+          </section>
+          <section className="users-section">
+            <div className="users-section__header">
+              <h3>Clientes</h3>
+              <p>Primer vertical de negocio conectado al nucleo persistido.</p>
+            </div>
+            <div className="users-grid">
+              {state.clients.map((client) => (
+                <article key={client.id} className="user-card">
+                  <strong>{client.fullName}</strong>
+                  <span>{client.email ?? 'sin email'}</span>
+                  <span>{client.phone ?? 'sin telefono'}</span>
+                  <div className="permission-list">
+                    <span className="module-pill module-pill--accent">{client.segment}</span>
+                  </div>
+                  {client.notes ? <span>{client.notes}</span> : null}
+                </article>
+              ))}
+            </div>
+            <form className="create-user-form" onSubmit={handleCreateClient}>
+              <label>
+                <span>Nombre</span>
+                <input value={clientName} onChange={(event) => setClientName(event.target.value)} type="text" />
+              </label>
+              <label>
+                <span>Email</span>
+                <input value={clientEmail} onChange={(event) => setClientEmail(event.target.value)} type="email" />
+              </label>
+              <label>
+                <span>Telefono</span>
+                <input value={clientPhone} onChange={(event) => setClientPhone(event.target.value)} type="text" />
+              </label>
+              <label>
+                <span>Segmento</span>
+                <input value={clientSegment} onChange={(event) => setClientSegment(event.target.value)} type="text" />
+              </label>
+              <label>
+                <span>Notas</span>
+                <input value={clientNotes} onChange={(event) => setClientNotes(event.target.value)} type="text" />
+              </label>
+              <button type="submit" disabled={createUserState.status === 'loading'}>
+                Crear cliente
+              </button>
+            </form>
           </section>
         </>
       ) : null}

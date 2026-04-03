@@ -19,13 +19,14 @@
 - anadida persistencia real con Prisma y PostgreSQL para tenants, usuarios, roles, permisos y sesiones;
 - anadido el primer CRUD base de plataforma para crear y listar usuarios del tenant;
 - anadidos ajustes persistidos del tenant, reasignacion de roles y logout sobre sesiones persistidas;
+- anadido `clients` como primer vertical de negocio persistido y visible en backoffice;
 - validados `typecheck`, `test`, `build` y `lint`.
 
 ## Pendiente inmediato
 
 - decidir estrategia concreta de persistencia inicial;
 - empezar la capa `settings` y gestion explicita de roles/permisos sobre la base ya persistida.
-- endurecer sesiones y abrir los primeros modulos de negocio sobre este nucleo.
+- abrir el siguiente vertical tras `clients`: `products-services` o `sales`.
 
 ## Riesgos abiertos
 
@@ -41,4 +42,4 @@
 
 ## Siguiente paso logico
 
-Entrar en el primer modulo de negocio sobre este nucleo: `clients` o `products-services`, manteniendo contratos y permisos.
+Profundizar el circuito comercial con `products-services` y enlazarlo despues con `clients` y `sales`.

@@ -41,3 +41,10 @@
 - carencia: aun no existe un primer modulo de negocio completo sobre esta base;
 - mejora aplicada: el backoffice deja listo el salto a `clients` o `products-services` con permisos y configuracion ya resueltos;
 - siguiente accion: construir el primer vertical de negocio real.
+
+## Review 007
+
+- fortaleza: `clients` ya funciona como primer vertical de negocio persistido y visible en el backoffice;
+- carencia: todavia no hay catalogo de productos/servicios ni circuito comercial enlazado;
+- mejora aplicada: el proyecto deja de ser solo nucleo administrativo y entra en dominio de negocio real;
+- siguiente accion: levantar `products-services` y preparar su union con `clients` y `sales`.

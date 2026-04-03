@@ -156,3 +156,25 @@ export const updateUserRoleRequestSchema = z.object({
 });
 
 export type UpdateUserRoleRequest = z.infer<typeof updateUserRoleRequestSchema>;
+
+export const clientSummarySchema = z.object({
+  id: z.string().min(1),
+  tenantId: z.string().min(1),
+  fullName: z.string().min(1),
+  email: z.string().email().nullable(),
+  phone: z.string().nullable(),
+  segment: z.string().min(1),
+  notes: z.string().nullable()
+});
+
+export type ClientSummary = z.infer<typeof clientSummarySchema>;
+
+export const createClientRequestSchema = z.object({
+  fullName: z.string().min(1),
+  email: z.string().email().optional().or(z.literal('')),
+  phone: z.string().min(3).optional().or(z.literal('')),
+  segment: z.string().min(1),
+  notes: z.string().optional().or(z.literal(''))
+});
+
+export type CreateClientRequest = z.infer<typeof createClientRequestSchema>;

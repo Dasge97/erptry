@@ -2,7 +2,7 @@
 
 ## in_progress
 
-- extender el nucleo con ajustes, roles y permisos administrables.
+- abrir el siguiente vertical comercial sobre la base de `clients`.
 
 ## pending
 
@@ -14,6 +14,7 @@
 - crear configuracion persistida por tenant;
 - exponer gestion de roles y permisos base.
 - abrir el primer modulo de negocio vertical sobre este nucleo.
+- modelar `products-services` y su relacion con clientes.
 
 ## blocked
 
@@ -29,4 +30,5 @@
 - persistencia real del nucleo con Prisma y PostgreSQL;
 - primer CRUD base de usuarios del tenant desde API y web;
 - ajustes persistidos, reasignacion de roles y logout de sesion;
+- vertical `clients` operativo en API, seed y backoffice;
 - calidad minima validada con typecheck, test, lint y build.

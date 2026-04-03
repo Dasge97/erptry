@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 
 import {
   appManifestSchema,
+  createClientRequestSchema,
   createUserRequestSchema,
   healthResponseSchema,
   updateTenantSettingsRequestSchema,
@@ -11,6 +12,7 @@ import { createPlatformSnapshot } from '@erptry/domain';
 
 import { appConfig } from '../config';
 import { prisma } from '../lib/prisma';
+import { createClient, listClients } from '../services/clients-service';
 import { resolvePersistedSession } from '../services/auth-service';
 import { createTenantUser, getTenantOverview, listRoles, listTenantUsers, updateTenantUserRole } from '../services/platform-service';
 import { getTenantSettings, upsertTenantSettings } from '../services/settings-service';
@@ -29,8 +31,8 @@ export async function registerPlatformModule(app: FastifyInstance) {
     return appManifestSchema.parse({
       name: 'ERPTRY',
       headline: 'ERP modular para operaciones, ventas y gestion multiempresa.',
-      modules: ['auth', 'users', 'roles-permissions', 'settings', 'multi-tenant'],
-      priorities: ['bootstrap tecnico', 'nucleo de plataforma', 'circuito comercial']
+      modules: ['auth', 'users', 'roles-permissions', 'settings', 'multi-tenant', 'clients'],
+      priorities: ['bootstrap tecnico', 'nucleo de plataforma', 'vertical clients']
     });
   });
 
@@ -289,5 +291,58 @@ export async function registerPlatformModule(app: FastifyInstance) {
     }
 
     return updatedUser;
+  });
+
+  app.post('/api/clients/list', async (request, reply) => {
+    if (!appConfig.databaseUrl) {
+      return reply.code(503).send({
+        error: 'database_not_configured',
+        message: 'Configura DATABASE_URL para consultar clientes persistidos.'
+      });
+    }
+
+    const body = request.body as { token?: string };
+
+    if (typeof body.token !== 'string' || body.token.length === 0) {
+      return reply.code(400).send({ error: 'missing_token', message: 'Falta el token de sesion.' });
+    }
+
+    const me = await resolvePersistedSession(prisma, body.token);
+
+    if (!me) {
+      return reply.code(401).send({ error: 'invalid_session', message: 'La sesion no es valida o ha expirado.' });
+    }
+
+    return listClients(prisma, me.tenant.id);
+  });
+
+  app.post('/api/clients/create', async (request, reply) => {
+    if (!appConfig.databaseUrl) {
+      return reply.code(503).send({
+        error: 'database_not_configured',
+        message: 'Configura DATABASE_URL para crear clientes persistidos.'
+      });
+    }
+
+    const body = request.body as { token?: string; client?: unknown };
+
+    if (typeof body.token !== 'string' || body.token.length === 0) {
+      return reply.code(400).send({ error: 'missing_token', message: 'Falta el token de sesion.' });
+    }
+
+    const me = await resolvePersistedSession(prisma, body.token);
+
+    if (!me) {
+      return reply.code(401).send({ error: 'invalid_session', message: 'La sesion no es valida o ha expirado.' });
+    }
+
+    if (!me.permissions.includes('users.manage')) {
+      return reply.code(403).send({ error: 'forbidden', message: 'La sesion actual no puede crear clientes.' });
+    }
+
+    const input = createClientRequestSchema.parse(body.client);
+    const createdClient = await createClient(prisma, me.tenant.id, input);
+
+    return reply.code(201).send(createdClient);
   });
 }

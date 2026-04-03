@@ -68,6 +68,7 @@ Direccion tecnica ya activada en el repositorio:
 - `apps/api` ya expone login demo y resolucion de sesion firmada;
 - `apps/api` ya expone autenticacion persistida, tenant actual, listado de usuarios y alta inicial de usuarios;
 - `apps/api` ya expone catalogo de roles, reasignacion de roles y cierre de sesion persistida;
+- `apps/api` ya expone el primer vertical de negocio con `clients`;
 - `apps/web` ya renderiza un shell inicial de backoffice;
 - `packages/contracts`, `packages/domain` y `packages/ui` ya estan conectados y probados;
 - existe validacion minima con `typecheck`, `test`, `build` y `lint` en verde;
@@ -104,6 +105,8 @@ corepack pnpm --filter @erptry/api db:seed
 - `POST /api/platform/settings`
 - `POST /api/platform/settings/update`
 - `POST /api/auth/logout`
+- `POST /api/clients/list`
+- `POST /api/clients/create`
 
 ## Persistencia actual
 
@@ -111,7 +114,14 @@ corepack pnpm --filter @erptry/api db:seed
 - el seed inicial crea un tenant demo, permisos base, rol `owner` y usuario administrador;
 - existe una migracion SQL inicial en `apps/api/prisma/migrations/20260403_init/migration.sql`;
 - existe una migracion adicional para ajustes persistidos en `apps/api/prisma/migrations/20260403_add_tenant_settings/migration.sql`;
+- existe una migracion adicional para clientes en `apps/api/prisma/migrations/20260403_add_clients/migration.sql`;
 - la web ya incluye un panel para probar el login persistido, listar usuarios y crear usuarios del tenant cuando la API tenga base de datos disponible.
+
+## Vertical `clients`
+
+- listado de clientes por tenant;
+- alta de clientes desde backoffice;
+- seed inicial con un cliente de referencia para validar el vertical.
 
 ## Principios de producto
 

@@ -174,6 +174,29 @@ async function main() {
     }
   });
 
+  await prisma.client.upsert({
+    where: {
+      id: 'seed-client-acme'
+    },
+    update: {
+      tenantId: tenant.id,
+      fullName: 'Acme Servicios',
+      email: 'contacto@acme.test',
+      phone: '600111222',
+      segment: 'vip',
+      notes: 'Cliente de referencia para el primer vertical.'
+    },
+    create: {
+      id: 'seed-client-acme',
+      tenantId: tenant.id,
+      fullName: 'Acme Servicios',
+      email: 'contacto@acme.test',
+      phone: '600111222',
+      segment: 'vip',
+      notes: 'Cliente de referencia para el primer vertical.'
+    }
+  });
+
   console.log(JSON.stringify({ tenantId: tenant.id, adminId: admin.id, bootstrapTokenId: randomUUID() }));
 }
 

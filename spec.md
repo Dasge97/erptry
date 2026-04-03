@@ -295,4 +295,5 @@ Estado actual del nucleo:
 - existe tambien autenticacion persistida preparada para PostgreSQL mediante Prisma;
 - el backoffice ya puede consumir manifest, tenant actual y usuarios del tenant;
 - el backoffice ya puede actualizar ajustes del tenant, reasignar roles y cerrar sesiones;
+- `clients` ya existe como primer vertical de negocio sobre la base multi-tenant;
 - falta cerrar migraciones de produccion, estrategia definitiva de sesiones y endurecimiento de credenciales.
