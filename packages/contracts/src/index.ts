@@ -119,3 +119,24 @@ export const tenantOverviewSchema = z.object({
 });
 
 export type TenantOverview = z.infer<typeof tenantOverviewSchema>;
+
+export const createUserRequestSchema = z.object({
+  fullName: z.string().min(1),
+  email: z.string().email(),
+  password: z.string().min(8),
+  roleCode: z.enum(['owner', 'admin', 'manager', 'operator', 'viewer'])
+});
+
+export type CreateUserRequest = z.infer<typeof createUserRequestSchema>;
+
+export const tenantSettingsSchema = z.object({
+  brandingName: z.string().min(1),
+  defaultLocale: z.string().min(2),
+  timezone: z.string().min(2)
+});
+
+export type TenantSettings = z.infer<typeof tenantSettingsSchema>;
+
+export const updateTenantSettingsRequestSchema = tenantSettingsSchema;
+
+export type UpdateTenantSettingsRequest = z.infer<typeof updateTenantSettingsRequestSchema>;

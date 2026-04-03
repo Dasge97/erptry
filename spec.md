@@ -293,4 +293,5 @@ Estado actual del nucleo:
 
 - existe login demo con sesion firmada para validar el circuito de acceso;
 - existe tambien autenticacion persistida preparada para PostgreSQL mediante Prisma;
+- el backoffice ya puede consumir manifest, tenant actual y usuarios del tenant;
 - falta cerrar migraciones de produccion, estrategia definitiva de sesiones y endurecimiento de credenciales.

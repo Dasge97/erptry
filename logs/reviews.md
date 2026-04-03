@@ -27,3 +27,10 @@
 - carencia: la web todavia no gobierna un estado autenticado completo de backoffice ni hay CRUD de plataforma;
 - mejora aplicada: el panel web ya puede atacar el login persistido en cuanto la API este seedada;
 - siguiente accion: crear el primer flujo autenticado de tenant y usuarios.
+
+## Review 005
+
+- fortaleza: el backoffice ya realiza login persistido, consulta tenant, lista usuarios y puede crear usuarios;
+- carencia: faltan ajustes persistidos, edicion de roles y permisos y endurecimiento del flujo de sesiones;
+- mejora aplicada: se ha dejado la primera experiencia administrativa real sobre la base multi-tenant;
+- siguiente accion: abrir `settings` y gestion administrativa de acceso.

@@ -29,6 +29,31 @@ async function main() {
     }
   });
 
+  await prisma.tenantSetting.upsert({
+    where: {
+      tenantId_key: {
+        tenantId: tenant.id,
+        key: 'core'
+      }
+    },
+    update: {
+      value: {
+        brandingName: tenantName,
+        defaultLocale: 'es-ES',
+        timezone: 'Europe/Madrid'
+      }
+    },
+    create: {
+      tenantId: tenant.id,
+      key: 'core',
+      value: {
+        brandingName: tenantName,
+        defaultLocale: 'es-ES',
+        timezone: 'Europe/Madrid'
+      }
+    }
+  });
+
   const permissions = await Promise.all(
     DEFAULT_PERMISSIONS.map(([code, name]) =>
       prisma.permission.upsert({

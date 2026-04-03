@@ -66,6 +66,7 @@ Direccion tecnica ya activada en el repositorio:
 
 - `apps/api` ya responde con `healthcheck`, `manifest` y `bootstrap snapshot`;
 - `apps/api` ya expone login demo y resolucion de sesion firmada;
+- `apps/api` ya expone autenticacion persistida, tenant actual, listado de usuarios y alta inicial de usuarios;
 - `apps/web` ya renderiza un shell inicial de backoffice;
 - `packages/contracts`, `packages/domain` y `packages/ui` ya estan conectados y probados;
 - existe validacion minima con `typecheck`, `test`, `build` y `lint` en verde;
@@ -94,12 +95,16 @@ corepack pnpm --filter @erptry/api db:seed
 - `POST /api/auth/session/resolve`
 - `POST /api/auth/login`
 - `POST /api/auth/me`
+- `POST /api/platform/tenant/current`
+- `POST /api/platform/users`
+- `POST /api/platform/users/create`
 
 ## Persistencia actual
 
 - `apps/api/prisma/schema.prisma` define `tenant`, `user`, `role`, `permission`, `session` y tablas intermedias;
 - el seed inicial crea un tenant demo, permisos base, rol `owner` y usuario administrador;
-- la web ya incluye un panel para probar el login persistido cuando la API tenga base de datos disponible.
+- existe una migracion SQL inicial en `apps/api/prisma/migrations/20260403_init/migration.sql`;
+- la web ya incluye un panel para probar el login persistido, listar usuarios y crear usuarios del tenant cuando la API tenga base de datos disponible.
 
 ## Principios de producto
 

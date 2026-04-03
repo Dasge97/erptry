@@ -17,12 +17,13 @@
 - conectados contratos, dominio y UI compartida;
 - implementado un circuito demo de login y sesion firmada para validar acceso;
 - anadida persistencia real con Prisma y PostgreSQL para tenants, usuarios, roles, permisos y sesiones;
+- anadido el primer CRUD base de plataforma para crear y listar usuarios del tenant;
 - validados `typecheck`, `test`, `build` y `lint`.
 
 ## Pendiente inmediato
 
 - decidir estrategia concreta de persistencia inicial;
-- conectar el login persistido con datos reales desde la web y cerrar el primer flujo backoffice.
+- empezar la capa `settings` y gestion explicita de roles/permisos sobre la base ya persistida.
 
 ## Riesgos abiertos
 
@@ -38,4 +39,4 @@
 
 ## Siguiente paso logico
 
-Conectar el primer flujo real de backoffice a la autenticacion persistida y empezar CRUD base de usuarios/tenants.
+Extender el nucleo con `settings`, CRUD de roles/permisos y primeros casos de uso administrativos.

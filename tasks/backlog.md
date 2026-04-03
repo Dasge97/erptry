@@ -2,7 +2,7 @@
 
 ## in_progress
 
-- conectar la web con la auth persistida y empezar el primer CRUD de plataforma.
+- extender el nucleo con ajustes, roles y permisos administrables.
 
 ## pending
 
@@ -10,7 +10,9 @@
 - modelar tenant, user, role y permission;
 - preparar migraciones iniciales;
 - conectar web con manifest y auth reales;
-- crear endpoints base de usuarios y tenant actual.
+- crear endpoints base de usuarios y tenant actual;
+- crear configuracion persistida por tenant;
+- exponer gestion de roles y permisos base.
 
 ## blocked
 
@@ -24,4 +26,5 @@
 - bootstrap ejecutable de API, web y paquetes compartidos;
 - login demo y resolucion de sesion firmada;
 - persistencia real del nucleo con Prisma y PostgreSQL;
+- primer CRUD base de usuarios del tenant desde API y web;
 - calidad minima validada con typecheck, test, lint y build.

@@ -53,3 +53,9 @@
 - motivo: acelerar un modelo relacional fuerte para tenant, usuarios, roles, permisos y sesiones;
 - impacto: la base ya puede pasar de bootstrap en memoria a autenticacion persistida con seed reproducible;
 - consecuencia futura: la siguiente iteracion debe convertir `db push` en migraciones versionadas de release.
+
+## D-010 - Primer CRUD administrativo sobre usuarios del tenant
+
+- motivo: convertir la autenticacion en un flujo de backoffice util y no solo en acceso tecnico;
+- impacto: el panel web ya puede listar y crear usuarios del tenant sobre la base persistida;
+- consecuencia futura: hay que separar mejor validacion, permisos finos y estados de usuario antes de crecer a empleados y clientes.
