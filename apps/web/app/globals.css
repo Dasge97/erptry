@@ -118,6 +118,15 @@ body {
   border-color: rgba(217, 107, 59, 0.22);
 }
 
+.secondary-action {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: pointer;
+}
+
 .login-panel {
   margin-top: 24px;
   display: grid;

@@ -34,3 +34,10 @@
 - carencia: faltan ajustes persistidos, edicion de roles y permisos y endurecimiento del flujo de sesiones;
 - mejora aplicada: se ha dejado la primera experiencia administrativa real sobre la base multi-tenant;
 - siguiente accion: abrir `settings` y gestion administrativa de acceso.
+
+## Review 006
+
+- fortaleza: el nucleo ya cubre login persistido, logout, ajustes del tenant y gestion basica de roles sobre usuarios;
+- carencia: aun no existe un primer modulo de negocio completo sobre esta base;
+- mejora aplicada: el backoffice deja listo el salto a `clients` o `products-services` con permisos y configuracion ya resueltos;
+- siguiente accion: construir el primer vertical de negocio real.

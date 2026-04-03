@@ -59,3 +59,9 @@
 - motivo: convertir la autenticacion en un flujo de backoffice util y no solo en acceso tecnico;
 - impacto: el panel web ya puede listar y crear usuarios del tenant sobre la base persistida;
 - consecuencia futura: hay que separar mejor validacion, permisos finos y estados de usuario antes de crecer a empleados y clientes.
+
+## D-011 - Ajustes y roles administrables antes del primer modulo de negocio
+
+- motivo: cerrar el nucleo operativo antes de abrir CRM o ventas;
+- impacto: el tenant ya puede gestionar identidad basica, configuracion y reasignacion de acceso desde el backoffice;
+- consecuencia futura: la siguiente fase puede centrarse en negocio reutilizando este nucleo sin rehacer seguridad.

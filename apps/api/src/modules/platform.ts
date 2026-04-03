@@ -1,12 +1,18 @@
 import type { FastifyInstance } from 'fastify';
 
-import { appManifestSchema, createUserRequestSchema, healthResponseSchema, updateTenantSettingsRequestSchema } from '@erptry/contracts';
+import {
+  appManifestSchema,
+  createUserRequestSchema,
+  healthResponseSchema,
+  updateTenantSettingsRequestSchema,
+  updateUserRoleRequestSchema
+} from '@erptry/contracts';
 import { createPlatformSnapshot } from '@erptry/domain';
 
 import { appConfig } from '../config';
 import { prisma } from '../lib/prisma';
 import { resolvePersistedSession } from '../services/auth-service';
-import { createTenantUser, getTenantOverview, listTenantUsers } from '../services/platform-service';
+import { createTenantUser, getTenantOverview, listRoles, listTenantUsers, updateTenantUserRole } from '../services/platform-service';
 import { getTenantSettings, upsertTenantSettings } from '../services/settings-service';
 
 export async function registerPlatformModule(app: FastifyInstance) {
@@ -208,5 +214,80 @@ export async function registerPlatformModule(app: FastifyInstance) {
     const settings = updateTenantSettingsRequestSchema.parse(body.settings);
 
     return upsertTenantSettings(prisma, me.tenant.id, settings);
+  });
+
+  app.post('/api/platform/roles', async (request, reply) => {
+    if (!appConfig.databaseUrl) {
+      return reply.code(503).send({
+        error: 'database_not_configured',
+        message: 'Configura DATABASE_URL para consultar roles persistidos.'
+      });
+    }
+
+    const body = request.body as { token?: string };
+
+    if (typeof body.token !== 'string' || body.token.length === 0) {
+      return reply.code(400).send({
+        error: 'missing_token',
+        message: 'Falta el token de sesion.'
+      });
+    }
+
+    const me = await resolvePersistedSession(prisma, body.token);
+
+    if (!me) {
+      return reply.code(401).send({
+        error: 'invalid_session',
+        message: 'La sesion no es valida o ha expirado.'
+      });
+    }
+
+    return listRoles(prisma);
+  });
+
+  app.post('/api/platform/users/role', async (request, reply) => {
+    if (!appConfig.databaseUrl) {
+      return reply.code(503).send({
+        error: 'database_not_configured',
+        message: 'Configura DATABASE_URL para actualizar roles persistidos.'
+      });
+    }
+
+    const body = request.body as { token?: string; update?: unknown };
+
+    if (typeof body.token !== 'string' || body.token.length === 0) {
+      return reply.code(400).send({
+        error: 'missing_token',
+        message: 'Falta el token de sesion.'
+      });
+    }
+
+    const me = await resolvePersistedSession(prisma, body.token);
+
+    if (!me) {
+      return reply.code(401).send({
+        error: 'invalid_session',
+        message: 'La sesion no es valida o ha expirado.'
+      });
+    }
+
+    if (!me.permissions.includes('roles.manage')) {
+      return reply.code(403).send({
+        error: 'forbidden',
+        message: 'La sesion actual no puede actualizar roles.'
+      });
+    }
+
+    const input = updateUserRoleRequestSchema.parse(body.update);
+    const updatedUser = await updateTenantUserRole(prisma, me.tenant.id, input.userId, input.roleCode);
+
+    if (!updatedUser) {
+      return reply.code(404).send({
+        error: 'user_or_role_not_found',
+        message: 'No se ha encontrado el usuario o el rol solicitado.'
+      });
+    }
+
+    return updatedUser;
   });
 }

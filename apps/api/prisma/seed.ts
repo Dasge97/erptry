@@ -13,6 +13,14 @@ const DEFAULT_PERMISSIONS = [
   ['analytics.view', 'Ver analitica']
 ] as const;
 
+const ROLE_DEFINITIONS = [
+  ['owner', 'Owner'],
+  ['admin', 'Admin'],
+  ['manager', 'Manager'],
+  ['operator', 'Operator'],
+  ['viewer', 'Viewer']
+] as const;
+
 async function main() {
   const tenantSlug = process.env.SEED_TENANT_SLUG ?? 'erptry';
   const tenantName = process.env.SEED_TENANT_NAME ?? 'ERPTRY Demo';
@@ -64,32 +72,66 @@ async function main() {
     )
   );
 
-  const ownerRole = await prisma.role.upsert({
-    where: { code: 'owner' },
-    update: { name: 'Owner' },
-    create: {
-      code: 'owner',
-      name: 'Owner'
-    }
-  });
-
-  await Promise.all(
-    permissions.map((permission) =>
-      prisma.rolePermission.upsert({
-        where: {
-          roleId_permissionId: {
-            roleId: ownerRole.id,
-            permissionId: permission.id
-          }
-        },
-        update: {},
+  const roles = await Promise.all(
+    ROLE_DEFINITIONS.map(([code, name]) =>
+      prisma.role.upsert({
+        where: { code },
+        update: { name },
         create: {
-          roleId: ownerRole.id,
-          permissionId: permission.id
+          code,
+          name
         }
       })
     )
   );
+
+  const roleByCode = new Map(roles.map((role) => [role.code, role]));
+  const permissionByCode = new Map(permissions.map((permission) => [permission.code, permission]));
+  const rolePermissions = new Map<string, string[]>([
+    ['owner', DEFAULT_PERMISSIONS.map(([code]) => code)],
+    ['admin', ['tenant.manage', 'users.manage', 'roles.manage', 'settings.manage', 'analytics.view']],
+    ['manager', ['users.manage', 'analytics.view']],
+    ['operator', ['analytics.view']],
+    ['viewer', ['analytics.view']]
+  ]);
+
+  await Promise.all(
+    Array.from(rolePermissions.entries()).flatMap(([roleCode, permissionCodes]) => {
+      const role = roleByCode.get(roleCode);
+
+      if (!role) {
+        throw new Error(`Role not found for code ${roleCode}`);
+      }
+
+      return permissionCodes.map((permissionCode) => {
+        const permission = permissionByCode.get(permissionCode);
+
+        if (!permission) {
+          throw new Error(`Permission not found for code ${permissionCode}`);
+        }
+
+        return prisma.rolePermission.upsert({
+          where: {
+            roleId_permissionId: {
+              roleId: role.id,
+              permissionId: permission.id
+            }
+          },
+          update: {},
+          create: {
+            roleId: role.id,
+            permissionId: permission.id
+          }
+        });
+      });
+    })
+  );
+
+  const ownerRole = roleByCode.get('owner');
+
+  if (!ownerRole) {
+    throw new Error('Owner role was not created');
+  }
 
   const passwordHash = await bcrypt.hash(adminPassword, 10);
 

@@ -5,7 +5,7 @@ import { findBootstrapUserByEmail, toSessionActor } from '@erptry/domain';
 
 import { appConfig } from '../config';
 import { prisma } from '../lib/prisma';
-import { createPersistedSession, resolvePersistedSession } from '../services/auth-service';
+import { createPersistedSession, resolvePersistedSession, revokePersistedSession } from '../services/auth-service';
 
 export async function registerAuthModule(app: FastifyInstance) {
   app.post('/api/auth/demo-login', async (request, reply) => {
@@ -121,5 +121,36 @@ export async function registerAuthModule(app: FastifyInstance) {
     }
 
     return me;
+  });
+
+  app.post('/api/auth/logout', async (request, reply) => {
+    if (!appConfig.databaseUrl) {
+      return reply.code(503).send({
+        error: 'database_not_configured',
+        message: 'Configura DATABASE_URL para cerrar sesiones persistidas.'
+      });
+    }
+
+    const body = request.body as { token?: string };
+
+    if (typeof body.token !== 'string' || body.token.length === 0) {
+      return reply.code(400).send({
+        error: 'missing_token',
+        message: 'Falta el token de sesion.'
+      });
+    }
+
+    const revoked = await revokePersistedSession(prisma, body.token);
+
+    if (!revoked) {
+      return reply.code(404).send({
+        error: 'session_not_found',
+        message: 'No se encontro una sesion activa para ese token.'
+      });
+    }
+
+    return {
+      status: 'logged_out'
+    };
   });
 }

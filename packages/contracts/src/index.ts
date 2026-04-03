@@ -140,3 +140,19 @@ export type TenantSettings = z.infer<typeof tenantSettingsSchema>;
 export const updateTenantSettingsRequestSchema = tenantSettingsSchema;
 
 export type UpdateTenantSettingsRequest = z.infer<typeof updateTenantSettingsRequestSchema>;
+
+export const roleSummarySchema = z.object({
+  id: z.string().min(1),
+  code: z.string().min(1),
+  name: z.string().min(1),
+  permissions: z.array(z.string().min(1))
+});
+
+export type RoleSummary = z.infer<typeof roleSummarySchema>;
+
+export const updateUserRoleRequestSchema = z.object({
+  userId: z.string().min(1),
+  roleCode: z.enum(['owner', 'admin', 'manager', 'operator', 'viewer'])
+});
+
+export type UpdateUserRoleRequest = z.infer<typeof updateUserRoleRequestSchema>;

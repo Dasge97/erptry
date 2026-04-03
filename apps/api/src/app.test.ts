@@ -50,4 +50,16 @@ describe('api bootstrap', () => {
     expect(sessionResponse.statusCode).toBe(200);
     expect(sessionResponse.json().actor.role).toBe('owner');
   });
+
+  it('permite cerrar una sesion inexistente con error controlado', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/logout',
+      payload: {
+        token: 'missing'
+      }
+    });
+
+    expect(response.statusCode).toBe(503);
+  });
 });

@@ -157,3 +157,27 @@ export async function resolvePersistedSession(prisma: PrismaClient, token: strin
     expiresAt: session.expiresAt.toISOString()
   });
 }
+
+export async function revokePersistedSession(prisma: PrismaClient, token: string): Promise<boolean> {
+  const session = await prisma.session.findFirst({
+    where: {
+      token,
+      revokedAt: null
+    }
+  });
+
+  if (!session) {
+    return false;
+  }
+
+  await prisma.session.update({
+    where: {
+      id: session.id
+    },
+    data: {
+      revokedAt: new Date()
+    }
+  });
+
+  return true;
+}

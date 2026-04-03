@@ -18,12 +18,14 @@
 - implementado un circuito demo de login y sesion firmada para validar acceso;
 - anadida persistencia real con Prisma y PostgreSQL para tenants, usuarios, roles, permisos y sesiones;
 - anadido el primer CRUD base de plataforma para crear y listar usuarios del tenant;
+- anadidos ajustes persistidos del tenant, reasignacion de roles y logout sobre sesiones persistidas;
 - validados `typecheck`, `test`, `build` y `lint`.
 
 ## Pendiente inmediato
 
 - decidir estrategia concreta de persistencia inicial;
 - empezar la capa `settings` y gestion explicita de roles/permisos sobre la base ya persistida.
+- endurecer sesiones y abrir los primeros modulos de negocio sobre este nucleo.
 
 ## Riesgos abiertos
 
@@ -39,4 +41,4 @@
 
 ## Siguiente paso logico
 
-Extender el nucleo con `settings`, CRUD de roles/permisos y primeros casos de uso administrativos.
+Entrar en el primer modulo de negocio sobre este nucleo: `clients` o `products-services`, manteniendo contratos y permisos.

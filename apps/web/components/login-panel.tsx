@@ -24,6 +24,12 @@ type LoginState =
         defaultLocale: string;
         timezone: string;
       };
+      rolesCatalog: Array<{
+        id: string;
+        code: string;
+        name: string;
+        permissions: string[];
+      }>;
       users: Array<{
         id: string;
         fullName: string;
@@ -54,6 +60,29 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
   const [brandingName, setBrandingName] = useState('ERPTRY Demo');
   const [defaultLocale, setDefaultLocale] = useState('es-ES');
   const [timezone, setTimezone] = useState('Europe/Madrid');
+
+  async function loadRoles(token: string) {
+    const response = await fetch(`${apiBaseUrl}/api/platform/roles`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({ token })
+    });
+
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload.message ?? 'No se pudieron cargar los roles.');
+    }
+
+    return payload as Array<{
+      id: string;
+      code: string;
+      name: string;
+      permissions: string[];
+    }>;
+  }
 
   const helperText = useMemo(() => {
     if (state.status === 'error') return state.message;
@@ -160,6 +189,7 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
 
       const users = await loadUsers(loginPayload.token);
       const settings = await loadSettings(loginPayload.token);
+      const rolesCatalog = await loadRoles(loginPayload.token);
 
       setBrandingName(settings.brandingName);
       setDefaultLocale(settings.defaultLocale);
@@ -174,6 +204,7 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
         activeSessions: tenantPayload.activeSessions,
         token: loginPayload.token,
         settings,
+        rolesCatalog,
         users
       });
     } catch {
@@ -188,7 +219,7 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
       return;
     }
 
-    setSaveSettingsState({ status: 'loading' });
+    setCreateUserState({ status: 'loading' });
 
     try {
       const response = await fetch(`${apiBaseUrl}/api/platform/users/create`, {
@@ -234,7 +265,7 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
       return;
     }
 
-    setCreateUserState({ status: 'loading' });
+    setSaveSettingsState({ status: 'loading' });
 
     try {
       const response = await fetch(`${apiBaseUrl}/api/platform/settings/update`, {
@@ -270,6 +301,65 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
     }
   }
 
+  async function handleChangeUserRole(userId: string, roleCode: string) {
+    if (state.status !== 'success') {
+      return;
+    }
+
+    setCreateUserState({ status: 'loading' });
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/platform/users/role`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          token: state.token,
+          update: {
+            userId,
+            roleCode
+          }
+        })
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        setCreateUserState({ status: 'error', message: payload.message ?? 'No se pudo actualizar el rol.' });
+        return;
+      }
+
+      const users = await loadUsers(state.token);
+
+      setState({
+        ...state,
+        users
+      });
+      setCreateUserState({ status: 'success', message: 'Rol actualizado.' });
+    } catch {
+      setCreateUserState({ status: 'error', message: 'La API no esta disponible ahora mismo.' });
+    }
+  }
+
+  async function handleLogout() {
+    if (state.status !== 'success') {
+      return;
+    }
+
+    await fetch(`${apiBaseUrl}/api/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({ token: state.token })
+    });
+
+    setState({ status: 'idle' });
+    setCreateUserState({ status: 'idle' });
+    setSaveSettingsState({ status: 'idle' });
+  }
+
   return (
     <section className="login-panel">
       <div>
@@ -297,6 +387,9 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
             <span className="module-pill">tenant: {state.tenantName}</span>
             <span className="module-pill">usuarios: {state.totalUsers}</span>
             <span className="module-pill">sesiones activas: {state.activeSessions}</span>
+            <button className="secondary-action" onClick={handleLogout} type="button">
+              Cerrar sesion
+            </button>
           </div>
           <form className="create-user-form" onSubmit={handleUpdateSettings}>
             <label>
@@ -340,6 +433,19 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
                   <strong>{user.fullName}</strong>
                   <span>{user.email}</span>
                   <span>{user.status}</span>
+                  <label>
+                    <span>Rol actual</span>
+                    <select
+                      value={user.roles[0] ?? 'viewer'}
+                      onChange={(event) => void handleChangeUserRole(user.id, event.target.value)}
+                    >
+                      {state.rolesCatalog.map((role) => (
+                        <option key={role.id} value={role.code}>
+                          {role.code}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <div className="permission-list">
                     {user.roles.map((role) => (
                       <span key={role} className="module-pill module-pill--accent">
@@ -378,9 +484,9 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
             </form>
             <p className={`login-status login-status--${createUserState.status}`}>
               {createUserState.status === 'idle'
-                ? 'Puedes crear usuarios del tenant desde este panel.'
+                ? 'Puedes crear usuarios y reasignar roles del tenant desde este panel.'
                 : createUserState.status === 'loading'
-                  ? 'Creando usuario...'
+                  ? 'Aplicando cambios...'
                   : createUserState.message}
             </p>
           </section>

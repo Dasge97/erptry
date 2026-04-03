@@ -13,6 +13,7 @@
 - crear endpoints base de usuarios y tenant actual;
 - crear configuracion persistida por tenant;
 - exponer gestion de roles y permisos base.
+- abrir el primer modulo de negocio vertical sobre este nucleo.
 
 ## blocked
 
@@ -27,4 +28,5 @@
 - login demo y resolucion de sesion firmada;
 - persistencia real del nucleo con Prisma y PostgreSQL;
 - primer CRUD base de usuarios del tenant desde API y web;
+- ajustes persistidos, reasignacion de roles y logout de sesion;
 - calidad minima validada con typecheck, test, lint y build.
