@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createAuditLog, listAuditLogs } from './audit-logs-service';
+import { createAuditLog, listAuditLogs } from './audit-logs-service.js';
 
 describe('audit-logs-service', () => {
   it('construye un feed reciente de auditoria por tenant', async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createEmployee, listEmployees } from './employees-service';
+import { createEmployee, listEmployees } from './employees-service.js';
 
 describe('listEmployees', () => {
   it('normaliza empleados con usuario enlazado', async () => {

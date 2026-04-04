@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { getTenantSettings } from './settings-service';
+import { getTenantSettings } from './settings-service.js';
 
 describe('getTenantSettings', () => {
   it('devuelve defaults cuando no hay configuracion persistida', async () => {

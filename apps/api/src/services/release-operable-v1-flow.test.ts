@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { getAnalyticsSnapshot } from './analytics-service';
-import { createAuditLog, listAuditLogs } from './audit-logs-service';
-import { createInternalTask } from './internal-tasks-service';
-import { createInvoiceFromSale } from './invoices-service';
-import { createNotification, listNotifications } from './notifications-service';
-import { createPayment } from './payments-service';
-import { getReportsBundle } from './reports-service';
-import { createReservation } from './reservations-service';
+import { getAnalyticsSnapshot } from './analytics-service.js';
+import { createAuditLog, listAuditLogs } from './audit-logs-service.js';
+import { createInternalTask } from './internal-tasks-service.js';
+import { createInvoiceFromSale } from './invoices-service.js';
+import { createNotification, listNotifications } from './notifications-service.js';
+import { createPayment } from './payments-service.js';
+import { getReportsBundle } from './reports-service.js';
+import { createReservation } from './reservations-service.js';
 
 const tenantId = 'tenant_demo';
 const actorUserId = 'user_owner';

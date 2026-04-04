@@ -6,5 +6,5 @@ import { DashboardShell } from '../components/dashboard-shell';
 export default async function HomePage() {
   const manifest = await getApiManifest();
 
-  return <DashboardShell apiBaseUrl={webConfig.apiBaseUrl} manifest={manifest} />;
+  return <DashboardShell apiBaseUrl={webConfig.browserApiBaseUrl} manifest={manifest} />;
 }

@@ -4,7 +4,7 @@ import type { PrismaClient } from '@prisma/client';
 
 import { paymentSummarySchema } from '@erptry/contracts';
 
-import { createNotification } from './notifications-service';
+import { createNotification } from './notifications-service.js';
 
 function createPaymentReference() {
   const stamp = new Date().toISOString().slice(0, 10).replaceAll('-', '');

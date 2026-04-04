@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { canAssignTenantUserRole, canReadRoleCatalog, listRoles, listTenantUsers, updateTenantUserRole } from './platform-service';
+import { canAssignTenantUserRole, canReadRoleCatalog, listRoles, listTenantUsers, updateTenantUserRole } from './platform-service.js';
 
 describe('listTenantUsers', () => {
   it('normaliza los usuarios y sus roles', async () => {

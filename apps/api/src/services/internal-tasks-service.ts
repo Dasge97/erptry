@@ -4,7 +4,7 @@ import type { PrismaClient } from '@prisma/client';
 
 import { internalTaskSummarySchema } from '@erptry/contracts';
 
-import { createNotification } from './notifications-service';
+import { createNotification } from './notifications-service.js';
 
 function buildTaskCode() {
   return `TASK-${randomUUID().slice(0, 8).toUpperCase()}`;

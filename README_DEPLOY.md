@@ -22,13 +22,11 @@ Este archivo documenta la intencion de despliegue del proyecto fuente `erptry` d
 - `internal_port`: 3000
 - `healthcheck_path`: `/api/health`
 - `compose_project_name`: `deployment_erptry`
-
-## Nota operativa
-
-Este proyecto todavia esta en fase base documental y de arquitectura. El deployment real debe definirse cuando existan `apps/web`, `apps/api` y `infra/docker` ejecutables.
+- `services`: `web`, `api`, `postgres`
 
 ## Estado actual
 
 - ya existe `infra/docker/docker-compose.local.yml` para desarrollo local con PostgreSQL, API y web;
-- el compose productivo de CodeHive sigue pendiente hasta definir imagenes finales, variables y healthchecks cerrados;
-- cuando se prepare deployment real, debera publicarse desde `/home/codehive/codehive-app-state/deployments/erptry/workspace`.
+- el compose productivo canónico es `docker-compose.production.yml` en la raiz del proyecto;
+- las imagenes productivas viven en `infra/docker/Dockerfile.web` y `infra/docker/Dockerfile.api`;
+- el redeploy real debe ejecutarse siempre desde `/home/codehive/codehive-app-state/deployments/erptry/workspace`.

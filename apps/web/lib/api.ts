@@ -2,13 +2,17 @@ import { createPlatformSnapshot } from '@erptry/domain';
 
 const fallbackSnapshot = createPlatformSnapshot();
 
+const browserApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:3001';
+const serverApiBaseUrl = process.env.INTERNAL_API_BASE_URL ?? browserApiBaseUrl;
+
 export const webConfig = {
-  apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:3001'
+  browserApiBaseUrl,
+  serverApiBaseUrl
 };
 
 export async function getApiManifest() {
   try {
-    const response = await fetch(`${webConfig.apiBaseUrl}/api/manifest`, {
+    const response = await fetch(`${webConfig.serverApiBaseUrl}/api/manifest`, {
       cache: 'no-store'
     });
 

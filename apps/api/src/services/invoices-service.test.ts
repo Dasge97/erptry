@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createInvoiceFromSale, listInvoices } from './invoices-service';
+import { createInvoiceFromSale, listInvoices } from './invoices-service.js';
 
 describe('listInvoices', () => {
   it('normaliza facturas con venta, cliente y lineas', async () => {

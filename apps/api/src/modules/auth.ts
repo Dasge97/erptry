@@ -3,9 +3,9 @@ import type { FastifyInstance } from 'fastify';
 import { demoLoginRequestSchema, demoLoginResponseSchema, loginRequestSchema, sessionActorSchema } from '@erptry/contracts';
 import { findBootstrapUserByEmail, toSessionActor } from '@erptry/domain';
 
-import { appConfig } from '../config';
-import { prisma } from '../lib/prisma';
-import { createPersistedSession, resolvePersistedSession, revokePersistedSession } from '../services/auth-service';
+import { appConfig } from '../config.js';
+import { prisma } from '../lib/prisma.js';
+import { createPersistedSession, resolvePersistedSession, revokePersistedSession } from '../services/auth-service.js';
 
 export async function registerAuthModule(app: FastifyInstance) {
   app.post('/api/auth/demo-login', async (request, reply) => {

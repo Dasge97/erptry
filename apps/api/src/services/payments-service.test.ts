@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createPayment, listPayments } from './payments-service';
+import { createPayment, listPayments } from './payments-service.js';
 
 describe('listPayments', () => {
   it('normaliza cobros con contexto de factura, venta y cliente', async () => {

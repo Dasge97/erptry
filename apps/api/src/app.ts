@@ -2,8 +2,8 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
 
-import { registerAuthModule } from './modules/auth';
-import { registerPlatformModule } from './modules/platform';
+import { registerAuthModule } from './modules/auth.js';
+import { registerPlatformModule } from './modules/platform.js';
 
 export async function createApp() {
   const app = Fastify({

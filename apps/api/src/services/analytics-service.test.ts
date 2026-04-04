@@ -12,10 +12,10 @@ vi.mock('./payments-service', () => ({
   listPayments: vi.fn()
 }));
 
-import { getAnalyticsSnapshot } from './analytics-service';
-import { listInvoices } from './invoices-service';
-import { listPayments } from './payments-service';
-import { listSales } from './sales-service';
+import { getAnalyticsSnapshot } from './analytics-service.js';
+import { listInvoices } from './invoices-service.js';
+import { listPayments } from './payments-service.js';
+import { listSales } from './sales-service.js';
 
 describe('getAnalyticsSnapshot', () => {
   beforeEach(() => {

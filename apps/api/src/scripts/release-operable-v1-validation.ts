@@ -2,17 +2,17 @@ import { randomUUID } from 'node:crypto';
 
 import { PrismaClient } from '@prisma/client';
 
-import { createAuditLog, listAuditLogs } from '../services/audit-logs-service';
-import { getAnalyticsSnapshot } from '../services/analytics-service';
-import { createInternalTask, listInternalTasks } from '../services/internal-tasks-service';
-import { createInvoiceFromSale, listInvoices } from '../services/invoices-service';
-import { listNotifications } from '../services/notifications-service';
-import { createPayment, listPayments } from '../services/payments-service';
-import { canAssignTenantUserRole, canReadRoleCatalog } from '../services/platform-service';
-import { getReportsBundle } from '../services/reports-service';
-import { createReservation, listReservations } from '../services/reservations-service';
-import { createSale, listSales } from '../services/sales-service';
-import { listEmployees } from '../services/employees-service';
+import { createAuditLog, listAuditLogs } from '../services/audit-logs-service.js';
+import { getAnalyticsSnapshot } from '../services/analytics-service.js';
+import { createInternalTask, listInternalTasks } from '../services/internal-tasks-service.js';
+import { createInvoiceFromSale, listInvoices } from '../services/invoices-service.js';
+import { listNotifications } from '../services/notifications-service.js';
+import { createPayment, listPayments } from '../services/payments-service.js';
+import { canAssignTenantUserRole, canReadRoleCatalog } from '../services/platform-service.js';
+import { getReportsBundle } from '../services/reports-service.js';
+import { createReservation, listReservations } from '../services/reservations-service.js';
+import { createSale, listSales } from '../services/sales-service.js';
+import { listEmployees } from '../services/employees-service.js';
 
 const prisma = new PrismaClient();
 

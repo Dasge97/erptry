@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createReservation, listReservations } from './reservations-service';
+import { createReservation, listReservations } from './reservations-service.js';
 
 describe('listReservations', () => {
   it('normaliza reservas con empleado, creador y tarea interna enlazada', async () => {

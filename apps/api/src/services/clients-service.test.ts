@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { listClients } from './clients-service';
+import { listClients } from './clients-service.js';
 
 describe('listClients', () => {
   it('normaliza clientes del tenant', async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { listCatalogItems } from './catalog-service';
+import { listCatalogItems } from './catalog-service.js';
 
 describe('listCatalogItems', () => {
   it('normaliza catalogo de productos y servicios', async () => {

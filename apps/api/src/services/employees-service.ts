@@ -4,7 +4,7 @@ import type { PrismaClient } from '@prisma/client';
 
 import { employeeSummarySchema } from '@erptry/contracts';
 
-import { createNotification } from './notifications-service';
+import { createNotification } from './notifications-service.js';
 
 function mapEmployeeSummary(employee: {
   id: string;

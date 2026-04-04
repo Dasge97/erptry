@@ -4,7 +4,7 @@ import type { PrismaClient } from '@prisma/client';
 
 import { reservationSummarySchema } from '@erptry/contracts';
 
-import { createNotification } from './notifications-service';
+import { createNotification } from './notifications-service.js';
 
 function buildReservationCode() {
   return `RSV-${randomUUID().slice(0, 8).toUpperCase()}`;

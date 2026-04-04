@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createSale, listSales } from './sales-service';
+import { createSale, listSales } from './sales-service.js';
 
 describe('listSales', () => {
   it('normaliza ventas con cliente y lineas', async () => {

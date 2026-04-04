@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createInternalTask, listInternalTasks } from './internal-tasks-service';
+import { createInternalTask, listInternalTasks } from './internal-tasks-service.js';
 
 describe('listInternalTasks', () => {
   it('normaliza tareas internas con empleado asignado y creador', async () => {

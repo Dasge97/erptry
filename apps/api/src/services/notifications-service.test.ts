@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createNotification, listNotifications, markNotificationRead } from './notifications-service';
+import { createNotification, listNotifications, markNotificationRead } from './notifications-service.js';
 
 describe('notifications-service', () => {
   it('construye una bandeja con contadores de leidos y pendientes', async () => {

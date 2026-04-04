@@ -1,5 +1,5 @@
-import { createApp } from './app';
-import { appConfig } from './config';
+import { createApp } from './app.js';
+import { appConfig } from './config.js';
 
 const app = await createApp();
 

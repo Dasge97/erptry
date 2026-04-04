@@ -391,6 +391,10 @@ deployment:
   internal_port: 3000
   healthcheck_path: /api/health
   compose_project_name: deployment_erptry
+  services:
+    - web
+    - api
+    - postgres
   source_path: /home/codehive/codehive-data/workspaces/projects/erptry
   deployment_path: /home/codehive/codehive-app-state/deployments/erptry/workspace
   traefik_dynamic_file: /home/codehive/infrastructure/traefik/dynamic/deployment-erptry.yml

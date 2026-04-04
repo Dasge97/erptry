@@ -18,20 +18,20 @@ import {
 } from '@erptry/contracts';
 import { createPlatformSnapshot } from '@erptry/domain';
 
-import { appConfig } from '../config';
-import { prisma } from '../lib/prisma';
-import { createAuditLog, listAuditLogs } from '../services/audit-logs-service';
-import { createCatalogItem, listCatalogItems } from '../services/catalog-service';
-import { getAnalyticsSnapshot } from '../services/analytics-service';
-import { createClient, listClients } from '../services/clients-service';
-import { resolvePersistedSession } from '../services/auth-service';
-import { createEmployee, listEmployees } from '../services/employees-service';
-import { createInternalTask, listInternalTasks } from '../services/internal-tasks-service';
-import { createInvoiceFromSale, listInvoices } from '../services/invoices-service';
-import { createPayment, listPayments } from '../services/payments-service';
-import { createReservation, listReservations } from '../services/reservations-service';
-import { getReportsBundle } from '../services/reports-service';
-import { listNotifications, markNotificationRead } from '../services/notifications-service';
+import { appConfig } from '../config.js';
+import { prisma } from '../lib/prisma.js';
+import { createAuditLog, listAuditLogs } from '../services/audit-logs-service.js';
+import { createCatalogItem, listCatalogItems } from '../services/catalog-service.js';
+import { getAnalyticsSnapshot } from '../services/analytics-service.js';
+import { createClient, listClients } from '../services/clients-service.js';
+import { resolvePersistedSession } from '../services/auth-service.js';
+import { createEmployee, listEmployees } from '../services/employees-service.js';
+import { createInternalTask, listInternalTasks } from '../services/internal-tasks-service.js';
+import { createInvoiceFromSale, listInvoices } from '../services/invoices-service.js';
+import { createPayment, listPayments } from '../services/payments-service.js';
+import { createReservation, listReservations } from '../services/reservations-service.js';
+import { getReportsBundle } from '../services/reports-service.js';
+import { listNotifications, markNotificationRead } from '../services/notifications-service.js';
 import {
   canAssignTenantUserRole,
   canReadRoleCatalog,
@@ -40,9 +40,9 @@ import {
   listRoles,
   listTenantUsers,
   updateTenantUserRole
-} from '../services/platform-service';
-import { getTenantSettings, upsertTenantSettings } from '../services/settings-service';
-import { createSale, listSales } from '../services/sales-service';
+} from '../services/platform-service.js';
+import { getTenantSettings, upsertTenantSettings } from '../services/settings-service.js';
+import { createSale, listSales } from '../services/sales-service.js';
 
 export async function registerPlatformModule(app: FastifyInstance) {
   app.get('/api/health', async () => {

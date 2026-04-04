@@ -2,10 +2,10 @@ import type { PrismaClient } from '@prisma/client';
 
 import { reportsBundleSchema, type InvoiceSummary, type PaymentSummary, type SaleSummary } from '@erptry/contracts';
 
-import { getAnalyticsSnapshot } from './analytics-service';
-import { listInvoices } from './invoices-service';
-import { listPayments } from './payments-service';
-import { listSales } from './sales-service';
+import { getAnalyticsSnapshot } from './analytics-service.js';
+import { listInvoices } from './invoices-service.js';
+import { listPayments } from './payments-service.js';
+import { listSales } from './sales-service.js';
 
 function formatMoney(valueCents: number) {
   return (valueCents / 100).toFixed(2);
