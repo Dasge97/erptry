@@ -87,6 +87,33 @@ function mapInvoiceSummary(invoice: {
   });
 }
 
+async function fetchInvoice(prisma: PrismaClient, tenantId: string, invoiceId: string) {
+  return prisma.invoice.findFirst({
+    where: {
+      id: invoiceId,
+      tenantId
+    },
+    include: {
+      sale: true,
+      client: true,
+      lines: {
+        orderBy: { id: 'asc' }
+      },
+      payments: {
+        orderBy: { receivedAt: 'desc' }
+      }
+    }
+  });
+}
+
+function getConfirmedPaidCents(payments: Array<{ status: 'pending' | 'confirmed' | 'failed'; amountCents: number }>) {
+  return payments.reduce((total, payment) => total + (payment.status === 'confirmed' ? payment.amountCents : 0), 0);
+}
+
+function getDerivedInvoiceStatus(totalCents: number, payments: Array<{ status: 'pending' | 'confirmed' | 'failed'; amountCents: number }>) {
+  return getConfirmedPaidCents(payments) >= totalCents ? 'paid' : 'issued';
+}
+
 export async function listInvoices(prisma: PrismaClient, tenantId: string) {
   const invoices = await prisma.invoice.findMany({
     where: { tenantId },
@@ -198,4 +225,81 @@ export async function createInvoiceFromSale(
   });
 
   return summary;
+}
+
+export async function updateInvoice(
+  prisma: PrismaClient,
+  tenantId: string,
+  input: {
+    id: string;
+    dueDate: string;
+    notes?: string | undefined;
+    status: 'draft' | 'issued' | 'paid' | 'void';
+  }
+) {
+  const existingInvoice = await fetchInvoice(prisma, tenantId, input.id);
+
+  if (!existingInvoice) {
+    return { kind: 'not_found' as const };
+  }
+
+  const dueDate = new Date(`${input.dueDate}T00:00:00.000Z`);
+
+  if (Number.isNaN(dueDate.getTime())) {
+    return { kind: 'invalid_relations' as const };
+  }
+
+  const confirmedPaidCents = getConfirmedPaidCents(existingInvoice.payments);
+  const requestedVoid = input.status === 'void';
+
+  if (requestedVoid && confirmedPaidCents > 0) {
+    return { kind: 'payments_locked' as const };
+  }
+
+  const nextStatus = requestedVoid ? 'void' : getDerivedInvoiceStatus(existingInvoice.totalCents, existingInvoice.payments);
+
+  const invoice = await prisma.invoice.update({
+    where: { id: existingInvoice.id },
+    data: {
+      dueDate,
+      notes: input.notes?.trim() || null,
+      status: nextStatus
+    },
+    include: {
+      sale: true,
+      client: true,
+      lines: {
+        orderBy: { id: 'asc' }
+      },
+      payments: {
+        orderBy: { receivedAt: 'desc' }
+      }
+    }
+  });
+
+  return {
+    kind: 'updated' as const,
+    invoice: mapInvoiceSummary(invoice)
+  };
+}
+
+export async function deleteInvoice(prisma: PrismaClient, tenantId: string, invoiceId: string) {
+  const invoice = await fetchInvoice(prisma, tenantId, invoiceId);
+
+  if (!invoice) {
+    return { kind: 'not_found' as const };
+  }
+
+  if (invoice.payments.length > 0) {
+    return { kind: 'payments_locked' as const };
+  }
+
+  await prisma.invoice.delete({
+    where: { id: invoice.id }
+  });
+
+  return {
+    kind: 'deleted' as const,
+    invoice: mapInvoiceSummary(invoice)
+  };
 }

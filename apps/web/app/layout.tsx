@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { PropsWithChildren } from 'react';
 
+import 'bootstrap/dist/css/bootstrap.min.css';
 import './globals.css';
 
 export const metadata: Metadata = {

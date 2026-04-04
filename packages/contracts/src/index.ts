@@ -179,6 +179,18 @@ export const createClientRequestSchema = z.object({
 
 export type CreateClientRequest = z.infer<typeof createClientRequestSchema>;
 
+export const updateClientRequestSchema = createClientRequestSchema.extend({
+  id: z.string().min(1)
+});
+
+export type UpdateClientRequest = z.infer<typeof updateClientRequestSchema>;
+
+export const deleteClientRequestSchema = z.object({
+  clientId: z.string().min(1)
+});
+
+export type DeleteClientRequest = z.infer<typeof deleteClientRequestSchema>;
+
 export const catalogItemSummarySchema = z.object({
   id: z.string().min(1),
   tenantId: z.string().min(1),
@@ -204,6 +216,19 @@ export const createCatalogItemRequestSchema = z.object({
 
 export type CreateCatalogItemRequest = z.infer<typeof createCatalogItemRequestSchema>;
 
+export const updateCatalogItemRequestSchema = createCatalogItemRequestSchema.extend({
+  id: z.string().min(1),
+  status: z.enum(['active', 'archived']).default('active')
+});
+
+export type UpdateCatalogItemRequest = z.infer<typeof updateCatalogItemRequestSchema>;
+
+export const deleteCatalogItemRequestSchema = z.object({
+  itemId: z.string().min(1)
+});
+
+export type DeleteCatalogItemRequest = z.infer<typeof deleteCatalogItemRequestSchema>;
+
 export const saleStageSchema = z.enum(['draft', 'sent', 'won', 'lost']);
 
 export type SaleStage = z.infer<typeof saleStageSchema>;
@@ -224,6 +249,18 @@ export const createSaleRequestSchema = z.object({
 });
 
 export type CreateSaleRequest = z.infer<typeof createSaleRequestSchema>;
+
+export const updateSaleRequestSchema = createSaleRequestSchema.extend({
+  id: z.string().min(1)
+});
+
+export type UpdateSaleRequest = z.infer<typeof updateSaleRequestSchema>;
+
+export const deleteSaleRequestSchema = z.object({
+  saleId: z.string().min(1)
+});
+
+export type DeleteSaleRequest = z.infer<typeof deleteSaleRequestSchema>;
 
 export const saleLineSummarySchema = z.object({
   id: z.string().min(1),
@@ -275,6 +312,21 @@ export const createInvoiceRequestSchema = z.object({
 });
 
 export type CreateInvoiceRequest = z.infer<typeof createInvoiceRequestSchema>;
+
+export const updateInvoiceRequestSchema = z.object({
+  id: z.string().min(1),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  notes: z.string().optional().or(z.literal('')),
+  status: invoiceStatusSchema.default('issued')
+});
+
+export type UpdateInvoiceRequest = z.infer<typeof updateInvoiceRequestSchema>;
+
+export const deleteInvoiceRequestSchema = z.object({
+  invoiceId: z.string().min(1)
+});
+
+export type DeleteInvoiceRequest = z.infer<typeof deleteInvoiceRequestSchema>;
 
 export const invoiceLineSummarySchema = z.object({
   id: z.string().min(1),
@@ -330,6 +382,18 @@ export const createPaymentRequestSchema = z.object({
 });
 
 export type CreatePaymentRequest = z.infer<typeof createPaymentRequestSchema>;
+
+export const updatePaymentRequestSchema = createPaymentRequestSchema.extend({
+  id: z.string().min(1)
+});
+
+export type UpdatePaymentRequest = z.infer<typeof updatePaymentRequestSchema>;
+
+export const deletePaymentRequestSchema = z.object({
+  paymentId: z.string().min(1)
+});
+
+export type DeletePaymentRequest = z.infer<typeof deletePaymentRequestSchema>;
 
 export const invoiceSummarySchema = z.object({
   id: z.string().min(1),
@@ -580,6 +644,18 @@ export const createEmployeeRequestSchema = z.object({
 
 export type CreateEmployeeRequest = z.infer<typeof createEmployeeRequestSchema>;
 
+export const updateEmployeeRequestSchema = createEmployeeRequestSchema.extend({
+  id: z.string().min(1)
+});
+
+export type UpdateEmployeeRequest = z.infer<typeof updateEmployeeRequestSchema>;
+
+export const deleteEmployeeRequestSchema = z.object({
+  employeeId: z.string().min(1)
+});
+
+export type DeleteEmployeeRequest = z.infer<typeof deleteEmployeeRequestSchema>;
+
 export const internalTaskStatusSchema = z.enum(['todo', 'in_progress', 'blocked', 'done']);
 
 export type InternalTaskStatus = z.infer<typeof internalTaskStatusSchema>;
@@ -642,6 +718,18 @@ export const createInternalTaskRequestSchema = z.object({
 });
 
 export type CreateInternalTaskRequest = z.infer<typeof createInternalTaskRequestSchema>;
+
+export const updateInternalTaskRequestSchema = createInternalTaskRequestSchema.extend({
+  id: z.string().min(1)
+});
+
+export type UpdateInternalTaskRequest = z.infer<typeof updateInternalTaskRequestSchema>;
+
+export const deleteInternalTaskRequestSchema = z.object({
+  taskId: z.string().min(1)
+});
+
+export type DeleteInternalTaskRequest = z.infer<typeof deleteInternalTaskRequestSchema>;
 
 export const reservationStatusSchema = z.enum(['booked', 'confirmed', 'completed', 'cancelled']);
 
@@ -711,3 +799,15 @@ export const createReservationRequestSchema = z.object({
 });
 
 export type CreateReservationRequest = z.infer<typeof createReservationRequestSchema>;
+
+export const updateReservationRequestSchema = createReservationRequestSchema.extend({
+  id: z.string().min(1)
+});
+
+export type UpdateReservationRequest = z.infer<typeof updateReservationRequestSchema>;
+
+export const deleteReservationRequestSchema = z.object({
+  reservationId: z.string().min(1)
+});
+
+export type DeleteReservationRequest = z.infer<typeof deleteReservationRequestSchema>;

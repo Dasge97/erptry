@@ -2,7 +2,7 @@ import { createPlatformSnapshot } from '@erptry/domain';
 
 const fallbackSnapshot = createPlatformSnapshot();
 
-const browserApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:3001';
+const browserApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 const serverApiBaseUrl = process.env.INTERNAL_API_BASE_URL ?? browserApiBaseUrl;
 
 export const webConfig = {

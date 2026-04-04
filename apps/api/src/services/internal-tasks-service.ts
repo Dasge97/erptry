@@ -67,6 +67,120 @@ function mapInternalTaskSummary(task: {
   });
 }
 
+async function fetchTask(prisma: PrismaClient, tenantId: string, taskId: string) {
+  return prisma.internalTask.findFirst({
+    where: {
+      id: taskId,
+      tenantId
+    },
+    include: {
+      assigneeEmployee: {
+        select: {
+          id: true,
+          employeeCode: true,
+          fullName: true,
+          department: true,
+          jobTitle: true,
+          status: true
+        }
+      },
+      createdByUser: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true
+        }
+      },
+      sale: {
+        select: {
+          id: true,
+          reference: true,
+          title: true,
+          stage: true,
+          client: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true
+            }
+          }
+        }
+      },
+      reservations: {
+        select: {
+          id: true,
+          assigneeEmployeeId: true
+        }
+      }
+    }
+  });
+}
+
+async function resolveTaskRelations(
+  prisma: PrismaClient,
+  tenantId: string,
+  createdByUserId: string,
+  input: {
+    saleId?: string | undefined;
+    assigneeEmployeeId: string;
+    dueDate?: string | undefined;
+  }
+) {
+  const saleId = input.saleId?.trim() || null;
+
+  const [assigneeEmployee, creator, sale] = await Promise.all([
+    prisma.employee.findFirst({
+      where: {
+        id: input.assigneeEmployeeId,
+        tenantId
+      },
+      select: {
+        id: true,
+        status: true
+      }
+    }),
+    prisma.user.findFirst({
+      where: {
+        id: createdByUserId,
+        tenantId
+      },
+      select: { id: true }
+    }),
+    saleId
+      ? prisma.sale.findFirst({
+          where: {
+            id: saleId,
+            tenantId,
+            stage: 'won'
+          },
+          select: { id: true }
+        })
+      : Promise.resolve(null)
+  ]);
+
+  if (!assigneeEmployee || !creator || (saleId && !sale)) {
+    return { kind: 'invalid_relations' as const };
+  }
+
+  if (assigneeEmployee.status === 'inactive') {
+    return { kind: 'assignee_unavailable' as const };
+  }
+
+  const dueDate = input.dueDate?.trim()
+    ? new Date(`${input.dueDate}T00:00:00.000Z`)
+    : null;
+
+  if (input.dueDate?.trim() && (!dueDate || Number.isNaN(dueDate.getTime()))) {
+    return { kind: 'invalid_relations' as const };
+  }
+
+  return {
+    kind: 'ok' as const,
+    saleId,
+    dueDate
+  };
+}
+
 export async function listInternalTasks(prisma: PrismaClient, tenantId: string) {
   const tasks = await prisma.internalTask.findMany({
     where: { tenantId },
@@ -124,52 +238,10 @@ export async function createInternalTask(
     dueDate?: string | undefined;
   }
 ) {
-  const saleId = input.saleId?.trim() || null;
+  const relations = await resolveTaskRelations(prisma, tenantId, createdByUserId, input);
 
-  const [assigneeEmployee, creator, sale] = await Promise.all([
-    prisma.employee.findFirst({
-      where: {
-        id: input.assigneeEmployeeId,
-        tenantId
-      },
-      select: {
-        id: true,
-        status: true
-      }
-    }),
-    prisma.user.findFirst({
-      where: {
-        id: createdByUserId,
-        tenantId
-      },
-      select: { id: true }
-    }),
-    saleId
-      ? prisma.sale.findFirst({
-          where: {
-            id: saleId,
-            tenantId,
-            stage: 'won'
-          },
-          select: { id: true }
-        })
-      : Promise.resolve(null)
-  ]);
-
-  if (!assigneeEmployee || !creator || (saleId && !sale)) {
-    return { kind: 'invalid_relations' as const };
-  }
-
-  if (assigneeEmployee.status === 'inactive') {
-    return { kind: 'assignee_unavailable' as const };
-  }
-
-  const dueDate = input.dueDate?.trim()
-    ? new Date(`${input.dueDate}T00:00:00.000Z`)
-    : null;
-
-  if (input.dueDate?.trim() && (!dueDate || Number.isNaN(dueDate.getTime()))) {
-    return { kind: 'invalid_relations' as const };
+  if (relations.kind !== 'ok') {
+    return relations;
   }
 
   const completedAt = input.status === 'done' ? new Date() : null;
@@ -181,12 +253,12 @@ export async function createInternalTask(
       taskCode: buildTaskCode(),
       title: input.title.trim(),
       description: input.description?.trim() || null,
-      saleId,
+      saleId: relations.saleId,
       assigneeEmployeeId: input.assigneeEmployeeId,
       createdByUserId,
       status: input.status,
       priority: input.priority,
-      dueDate,
+      dueDate: relations.dueDate,
       completedAt
     },
     include: {
@@ -239,5 +311,113 @@ export async function createInternalTask(
   return {
     kind: 'created' as const,
     task: summary
+  };
+}
+
+export async function updateInternalTask(
+  prisma: PrismaClient,
+  tenantId: string,
+  createdByUserId: string,
+  input: {
+    id: string;
+    title: string;
+    description?: string | undefined;
+    saleId?: string | undefined;
+    assigneeEmployeeId: string;
+    status: 'todo' | 'in_progress' | 'blocked' | 'done';
+    priority: 'low' | 'medium' | 'high';
+    dueDate?: string | undefined;
+  }
+) {
+  const existingTask = await fetchTask(prisma, tenantId, input.id);
+
+  if (!existingTask) {
+    return { kind: 'not_found' as const };
+  }
+
+  if (existingTask.reservations.length > 0 && existingTask.assigneeEmployeeId !== input.assigneeEmployeeId) {
+    return { kind: 'assignee_locked' as const };
+  }
+
+  const relations = await resolveTaskRelations(prisma, tenantId, createdByUserId, input);
+
+  if (relations.kind !== 'ok') {
+    return relations;
+  }
+
+  const completedAt = input.status === 'done' ? existingTask.completedAt ?? new Date() : null;
+
+  const task = await prisma.internalTask.update({
+    where: { id: existingTask.id },
+    data: {
+      title: input.title.trim(),
+      description: input.description?.trim() || null,
+      saleId: relations.saleId,
+      assigneeEmployeeId: input.assigneeEmployeeId,
+      status: input.status,
+      priority: input.priority,
+      dueDate: relations.dueDate,
+      completedAt
+    },
+    include: {
+      assigneeEmployee: {
+        select: {
+          id: true,
+          employeeCode: true,
+          fullName: true,
+          department: true,
+          jobTitle: true,
+          status: true
+        }
+      },
+      createdByUser: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true
+        }
+      },
+      sale: {
+        select: {
+          id: true,
+          reference: true,
+          title: true,
+          stage: true,
+          client: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true
+            }
+          }
+        }
+      }
+    }
+  });
+
+  return {
+    kind: 'updated' as const,
+    task: mapInternalTaskSummary(task)
+  };
+}
+
+export async function deleteInternalTask(prisma: PrismaClient, tenantId: string, taskId: string) {
+  const existingTask = await fetchTask(prisma, tenantId, taskId);
+
+  if (!existingTask) {
+    return { kind: 'not_found' as const };
+  }
+
+  if (existingTask.reservations.length > 0) {
+    return { kind: 'has_relations' as const };
+  }
+
+  await prisma.internalTask.delete({
+    where: { id: existingTask.id }
+  });
+
+  return {
+    kind: 'deleted' as const,
+    task: mapInternalTaskSummary(existingTask)
   };
 }

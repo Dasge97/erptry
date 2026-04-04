@@ -72,6 +72,155 @@ function parseIsoDateTime(value: string) {
   return parsed;
 }
 
+async function fetchReservation(prisma: PrismaClient, tenantId: string, reservationId: string) {
+  return prisma.reservation.findFirst({
+    where: {
+      id: reservationId,
+      tenantId
+    },
+    include: {
+      assigneeEmployee: {
+        select: {
+          id: true,
+          employeeCode: true,
+          fullName: true,
+          department: true,
+          jobTitle: true,
+          status: true
+        }
+      },
+      createdByUser: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true
+        }
+      },
+      internalTask: {
+        select: {
+          id: true,
+          taskCode: true,
+          title: true,
+          status: true,
+          priority: true,
+          sale: {
+            select: {
+              id: true,
+              reference: true,
+              title: true,
+              stage: true,
+              client: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+async function resolveReservationRelations(
+  prisma: PrismaClient,
+  tenantId: string,
+  createdByUserId: string,
+  reservationId: string | null,
+  input: {
+    assigneeEmployeeId: string;
+    internalTaskId?: string | undefined;
+    startAt: string;
+    endAt: string;
+  }
+) {
+  const startAt = parseIsoDateTime(input.startAt);
+  const endAt = parseIsoDateTime(input.endAt);
+
+  if (!startAt || !endAt || endAt <= startAt) {
+    return { kind: 'invalid_schedule' as const };
+  }
+
+  const internalTaskId = input.internalTaskId?.trim() || null;
+
+  const [assigneeEmployee, creator, internalTask] = await Promise.all([
+    prisma.employee.findFirst({
+      where: {
+        id: input.assigneeEmployeeId,
+        tenantId
+      },
+      select: {
+        id: true,
+        status: true
+      }
+    }),
+    prisma.user.findFirst({
+      where: {
+        id: createdByUserId,
+        tenantId
+      },
+      select: { id: true }
+    }),
+    internalTaskId
+      ? prisma.internalTask.findFirst({
+          where: {
+            id: internalTaskId,
+            tenantId
+          },
+          select: {
+            id: true,
+            assigneeEmployeeId: true
+          }
+        })
+      : Promise.resolve(null)
+  ]);
+
+  if (!assigneeEmployee || !creator || (internalTaskId && !internalTask)) {
+    return { kind: 'invalid_relations' as const };
+  }
+
+  if (assigneeEmployee.status !== 'active') {
+    return { kind: 'assignee_unavailable' as const };
+  }
+
+  if (internalTask && internalTask.assigneeEmployeeId !== input.assigneeEmployeeId) {
+    return { kind: 'assignee_mismatch' as const };
+  }
+
+  const overlappingReservation = await prisma.reservation.findFirst({
+    where: {
+      tenantId,
+      assigneeEmployeeId: input.assigneeEmployeeId,
+      status: {
+        not: 'cancelled'
+      },
+      ...(reservationId ? { id: { not: reservationId } } : {}),
+      startAt: {
+        lt: endAt
+      },
+      endAt: {
+        gt: startAt
+      }
+    },
+    select: {
+      id: true
+    }
+  });
+
+  if (overlappingReservation) {
+    return { kind: 'schedule_conflict' as const };
+  }
+
+  return {
+    kind: 'ok' as const,
+    startAt,
+    endAt,
+    internalTaskId
+  };
+}
+
 export async function listReservations(prisma: PrismaClient, tenantId: string) {
   const reservations = await prisma.reservation.findMany({
     where: { tenantId },
@@ -139,80 +288,10 @@ export async function createReservation(
     endAt: string;
   }
 ) {
-  const startAt = parseIsoDateTime(input.startAt);
-  const endAt = parseIsoDateTime(input.endAt);
+  const relations = await resolveReservationRelations(prisma, tenantId, createdByUserId, null, input);
 
-  if (!startAt || !endAt || endAt <= startAt) {
-    return { kind: 'invalid_schedule' as const };
-  }
-
-  const internalTaskId = input.internalTaskId?.trim() || null;
-
-  const [assigneeEmployee, creator, internalTask] = await Promise.all([
-    prisma.employee.findFirst({
-      where: {
-        id: input.assigneeEmployeeId,
-        tenantId
-      },
-      select: {
-        id: true,
-        status: true
-      }
-    }),
-    prisma.user.findFirst({
-      where: {
-        id: createdByUserId,
-        tenantId
-      },
-      select: { id: true }
-    }),
-    internalTaskId
-      ? prisma.internalTask.findFirst({
-          where: {
-            id: internalTaskId,
-            tenantId
-          },
-          select: {
-            id: true,
-            assigneeEmployeeId: true
-          }
-        })
-      : Promise.resolve(null)
-  ]);
-
-  if (!assigneeEmployee || !creator || (internalTaskId && !internalTask)) {
-    return { kind: 'invalid_relations' as const };
-  }
-
-  if (assigneeEmployee.status !== 'active') {
-    return { kind: 'assignee_unavailable' as const };
-  }
-
-  if (internalTask && internalTask.assigneeEmployeeId !== input.assigneeEmployeeId) {
-    return { kind: 'assignee_mismatch' as const };
-  }
-
-  const overlappingReservation = await prisma.reservation.findFirst({
-    where: {
-      tenantId,
-      assigneeEmployeeId: input.assigneeEmployeeId,
-      status: {
-        not: 'cancelled'
-      },
-      startAt: {
-        lt: endAt
-      },
-      endAt: {
-        gt: startAt
-      }
-    },
-    select: {
-      id: true
-    }
-  });
-
-  if (overlappingReservation) {
-    return { kind: 'schedule_conflict' as const };
+  if (relations.kind !== 'ok') {
+    return relations;
   }
 
   const reservation = await prisma.reservation.create({
@@ -225,10 +304,10 @@ export async function createReservation(
       location: input.location?.trim() || null,
       assigneeEmployeeId: input.assigneeEmployeeId,
       createdByUserId,
-      internalTaskId,
+      internalTaskId: relations.internalTaskId,
       status: input.status,
-      startAt,
-      endAt
+      startAt: relations.startAt,
+      endAt: relations.endAt
     },
     include: {
       assigneeEmployee: {
@@ -289,5 +368,113 @@ export async function createReservation(
   return {
     kind: 'created' as const,
     reservation: summary
+  };
+}
+
+export async function updateReservation(
+  prisma: PrismaClient,
+  tenantId: string,
+  createdByUserId: string,
+  input: {
+    id: string;
+    title: string;
+    notes?: string | undefined;
+    location?: string | undefined;
+    assigneeEmployeeId: string;
+    internalTaskId?: string | undefined;
+    status: 'booked' | 'confirmed' | 'completed' | 'cancelled';
+    startAt: string;
+    endAt: string;
+  }
+) {
+  const existingReservation = await fetchReservation(prisma, tenantId, input.id);
+
+  if (!existingReservation) {
+    return { kind: 'not_found' as const };
+  }
+
+  const relations = await resolveReservationRelations(prisma, tenantId, createdByUserId, existingReservation.id, input);
+
+  if (relations.kind !== 'ok') {
+    return relations;
+  }
+
+  const reservation = await prisma.reservation.update({
+    where: { id: existingReservation.id },
+    data: {
+      title: input.title.trim(),
+      notes: input.notes?.trim() || null,
+      location: input.location?.trim() || null,
+      assigneeEmployeeId: input.assigneeEmployeeId,
+      internalTaskId: relations.internalTaskId,
+      status: input.status,
+      startAt: relations.startAt,
+      endAt: relations.endAt
+    },
+    include: {
+      assigneeEmployee: {
+        select: {
+          id: true,
+          employeeCode: true,
+          fullName: true,
+          department: true,
+          jobTitle: true,
+          status: true
+        }
+      },
+      createdByUser: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true
+        }
+      },
+      internalTask: {
+        select: {
+          id: true,
+          taskCode: true,
+          title: true,
+          status: true,
+          priority: true,
+          sale: {
+            select: {
+              id: true,
+              reference: true,
+              title: true,
+              stage: true,
+              client: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  return {
+    kind: 'updated' as const,
+    reservation: mapReservationSummary(reservation)
+  };
+}
+
+export async function deleteReservation(prisma: PrismaClient, tenantId: string, reservationId: string) {
+  const reservation = await fetchReservation(prisma, tenantId, reservationId);
+
+  if (!reservation) {
+    return { kind: 'not_found' as const };
+  }
+
+  await prisma.reservation.delete({
+    where: { id: reservation.id }
+  });
+
+  return {
+    kind: 'deleted' as const,
+    reservation: mapReservationSummary(reservation)
   };
 }

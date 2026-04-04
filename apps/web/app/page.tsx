@@ -1,10 +1,7 @@
 import React from 'react';
 
-import { getApiManifest, webConfig } from '../lib/api';
-import { DashboardShell } from '../components/dashboard-shell';
+import { LoginScreen } from '../components/auth/login-screen';
 
-export default async function HomePage() {
-  const manifest = await getApiManifest();
-
-  return <DashboardShell apiBaseUrl={webConfig.browserApiBaseUrl} manifest={manifest} />;
+export default function HomePage() {
+  return <LoginScreen />;
 }
