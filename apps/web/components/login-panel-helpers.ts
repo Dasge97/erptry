@@ -231,6 +231,13 @@ export type AccessReviewTimeline = {
   steps: AccessReviewTimelineStep[];
 };
 
+export type AccessReviewScenario = {
+  id: 'owner-viewer-bypass' | 'owner-operator-detour' | 'owner-manager-viewer-close';
+  title: string;
+  status: 'ok' | 'attention' | 'pending';
+  detail: string;
+};
+
 export type AccessReviewRole = 'owner' | 'manager' | 'viewer';
 
 export type PermissionGroupSummary = {
@@ -787,6 +794,78 @@ export function getAccessReviewTimeline(input: {
       : `El perfil actual no suma al recorrido ACL obligatorio. ${nextStepHint}`,
     steps
   };
+}
+
+export function getAccessReviewScenarios(input: {
+  visitedRoles: AccessReviewRole[];
+  actorRole: 'owner' | 'admin' | 'manager' | 'operator' | 'viewer';
+  actorEmail: string;
+}): AccessReviewScenario[] {
+  const timeline = getAccessReviewTimeline(input);
+  const normalizedEmail = input.actorEmail.trim().toLowerCase();
+  const normalizedVisitedRoles = sanitizeAccessReviewRoles(input.visitedRoles);
+  const currentTrackedRole = input.actorRole === 'owner' || input.actorRole === 'manager' || input.actorRole === 'viewer'
+    ? input.actorRole
+    : normalizedEmail === 'owner@erptry.local'
+      ? 'owner'
+      : normalizedEmail === 'manager@erptry.local'
+        ? 'manager'
+        : normalizedEmail === 'viewer@erptry.local'
+          ? 'viewer'
+          : undefined;
+  const visitedRoles = currentTrackedRole && !normalizedVisitedRoles.includes(currentTrackedRole)
+    ? [...normalizedVisitedRoles, currentTrackedRole]
+    : normalizedVisitedRoles;
+  const visitedSet = new Set(visitedRoles);
+  const hasOwner = visitedSet.has('owner');
+  const hasManager = visitedSet.has('manager');
+  const isOwnerViewerBypass = currentTrackedRole === 'viewer' && hasOwner && !hasManager;
+  const isOperator = input.actorRole === 'operator' || normalizedEmail === 'operator@erptry.local';
+  const isOwnerOperatorDetour = isOperator && hasOwner;
+  const happyPathClosed = timeline.orderStatus === 'ok' && timeline.completedCount === timeline.totalCount;
+
+  return [
+    {
+      id: 'owner-viewer-bypass',
+      title: 'Control owner -> viewer',
+      status: isOwnerViewerBypass
+        ? 'ok'
+        : timeline.orderStatus === 'attention' && timeline.orderHint.includes('owner -> viewer')
+          ? 'ok'
+          : 'pending',
+      detail: isOwnerViewerBypass
+        ? 'Detectado salto owner -> viewer sin manager: el repaso queda en revisar y exige reinicio.'
+        : 'Pendiente de validar el salto owner -> viewer para confirmar el aviso explicito y el reinicio obligatorio.'
+    },
+    {
+      id: 'owner-operator-detour',
+      title: 'Control owner -> operator',
+      status: isOperator && !hasOwner
+        ? 'attention'
+        : isOwnerOperatorDetour
+          ? 'ok'
+          : 'pending',
+      detail: isOperator && !hasOwner
+        ? 'Se abrio operator sin pasar por owner; repite owner -> operator para validar el desvio esperado.'
+        : isOwnerOperatorDetour
+          ? 'Detectado desvio owner -> operator: el recorrido no suma avance ACL y pide volver a owner.'
+          : 'Pendiente de validar el desvio owner -> operator antes del cierre visual ACL.'
+    },
+    {
+      id: 'owner-manager-viewer-close',
+      title: 'Cierre owner -> manager -> viewer',
+      status: happyPathClosed
+        ? 'ok'
+        : timeline.orderStatus === 'attention' && visitedRoles.length > 0
+          ? 'attention'
+          : 'pending',
+      detail: happyPathClosed
+        ? 'Recorrido obligatorio completo y en orden: owner -> manager -> viewer.'
+        : timeline.orderStatus === 'attention' && visitedRoles.length > 0
+          ? 'Hay recorrido iniciado con huecos; reinicia y repite owner -> manager -> viewer para cerrar.'
+          : 'Pendiente de completar el recorrido owner -> manager -> viewer en este navegador.'
+    }
+  ];
 }
 
 export function sanitizeAccessReviewRoles(roles: string[]): AccessReviewRole[] {

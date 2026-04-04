@@ -17,6 +17,7 @@ Dejar una validacion repetible para `release-operable-v1` sobre un tenant demo, 
 - tras iniciar sesion, revisar tambien `Mapa de acceso actual` para confirmar de un vistazo que el perfil cargado expone justo las superficies visibles, gestionables y ocultas que toca validar en ese paso del repaso;
 - revisar tambien `Control ACL del perfil activo` para validar en caliente (ok/revisar) que cada login respeta el alcance esperado del perfil demo antes de entrar al resto de modulos;
 - usar `Progreso del repaso ACL` como bitacora visual para confirmar en una sola pasada el orden obligatorio `owner -> manager -> viewer` y detectar si falta algun perfil antes de cerrar;
+- usar tambien las nuevas tarjetas `Control owner -> viewer`, `Control owner -> operator` y `Cierre owner -> manager -> viewer` para validar de forma explicita los dos desvios negativos clave antes de aceptar el cierre ACL;
 - si se entra con un perfil fuera de ese recorrido obligatorio (por ejemplo `operator`), `Progreso del repaso ACL` debe quedar en `orden: revisar`, mostrar el aviso explicito de perfil fuera de recorrido y pedir volver a `owner`; ese acceso no cuenta como avance del control ACL minimo;
 - en ese mismo caso, `Mapa de acceso actual` debe mostrar como siguiente paso volver a `owner` (no saltar directo a `viewer`) para mantener el recorrido manual consistente;
 - si recargas el navegador o cambias de seccion durante ese recorrido, `Progreso del repaso ACL` conserva el avance local en este navegador y en el tenant activo hasta pulsar `Reiniciar recorrido`;

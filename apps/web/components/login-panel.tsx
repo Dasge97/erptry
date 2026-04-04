@@ -8,6 +8,7 @@ import type { AccessReviewRole } from './login-panel-helpers';
 
 import {
   getAccessValidationChecks,
+  getAccessReviewScenarios,
   getAccessReviewStorageKey,
   getAccessReviewTimeline,
   getAccessReviewSummary,
@@ -948,6 +949,18 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
     }
 
     return getAccessReviewTimeline({
+      visitedRoles: visitedAccessRoles,
+      actorRole: state.actorRole,
+      actorEmail: state.actorEmail
+    });
+  }, [state, visitedAccessRoles]);
+
+  const accessReviewScenarios = useMemo(() => {
+    if (state.status !== 'success') {
+      return [];
+    }
+
+    return getAccessReviewScenarios({
       visitedRoles: visitedAccessRoles,
       actorRole: state.actorRole,
       actorEmail: state.actorEmail
@@ -2218,6 +2231,21 @@ export function LoginPanel({ apiBaseUrl }: LoginPanelProps) {
               </p>
               <p className="login-status login-status--idle">El avance se guarda por tenant en este navegador hasta que reinicies el recorrido.</p>
               <p className="login-status login-status--idle">{accessReviewTimeline.nextStepHint}</p>
+              <div className="users-grid analytics-panels">
+                {accessReviewScenarios.map((scenario) => (
+                  <article key={scenario.id} className={`user-card flow-check-item flow-check-item--${scenario.status === 'ok' ? 'complete' : scenario.status}`}>
+                    <div className="permission-list">
+                      <span
+                        className={`module-pill module-pill--accent flow-check-pill flow-check-pill--${scenario.status === 'ok' ? 'complete' : scenario.status}`}
+                      >
+                        {scenario.status === 'ok' ? 'ok' : scenario.status === 'attention' ? 'revisar' : 'pendiente'}
+                      </span>
+                    </div>
+                    <strong>{scenario.title}</strong>
+                    <span>{scenario.detail}</span>
+                  </article>
+                ))}
+              </div>
               <div className="users-grid analytics-panels">
                 {accessReviewTimeline.steps.map((step) => {
                   const requiresReset = step.needsReset;

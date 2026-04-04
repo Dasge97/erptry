@@ -13,6 +13,7 @@ Convertir `release-operable-v1` en un producto vendible para pymes de servicios,
 - la puerta tecnica (`typecheck`, `test`, `lint`, `build`) se mantiene revalidada mientras se remata el repaso manual final;
 - el script `validate:release-operable-v1` valida el ACL minimo `owner -> manager -> viewer` contra PostgreSQL real;
 - el backoffice mantiene un bloque `Progreso del repaso ACL` que deja trazable en UI el orden `owner -> manager -> viewer` para no cerrar la validacion manual con huecos de perfil;
+- el backoffice muestra escenarios ACL criticos (`owner -> viewer`, `owner -> operator`, `owner -> manager -> viewer`) con estado `ok/revisar/pendiente` para guiar el repaso manual final sin interpretaciones ambiguas;
 
 ## Estado actual
 

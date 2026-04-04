@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getAccessValidationChecks,
   getAccessReviewStorageKey,
+  getAccessReviewScenarios,
   getNextVisitedAccessRoles,
   getAccessReviewTimeline,
   getAccessReviewSummary,
@@ -557,6 +558,59 @@ describe('login panel helpers', () => {
           detail: 'Comprueba modo lectura sin acciones de gestion.'
         }
       ]
+    });
+  });
+
+  it('marca como validado el control owner -> operator cuando aparece el desvio esperado', () => {
+    expect(getAccessReviewScenarios({
+      visitedRoles: ['owner'],
+      actorRole: 'operator',
+      actorEmail: 'operator@erptry.local'
+    })).toEqual([
+      {
+        id: 'owner-viewer-bypass',
+        title: 'Control owner -> viewer',
+        status: 'pending',
+        detail: 'Pendiente de validar el salto owner -> viewer para confirmar el aviso explicito y el reinicio obligatorio.'
+      },
+      {
+        id: 'owner-operator-detour',
+        title: 'Control owner -> operator',
+        status: 'ok',
+        detail: 'Detectado desvio owner -> operator: el recorrido no suma avance ACL y pide volver a owner.'
+      },
+      {
+        id: 'owner-manager-viewer-close',
+        title: 'Cierre owner -> manager -> viewer',
+        status: 'attention',
+        detail: 'Hay recorrido iniciado con huecos; reinicia y repite owner -> manager -> viewer para cerrar.'
+      }
+    ]);
+  });
+
+  it('deja en atencion el control owner -> operator si se entra directo con operator', () => {
+    expect(getAccessReviewScenarios({
+      visitedRoles: [],
+      actorRole: 'operator',
+      actorEmail: 'operator@erptry.local'
+    })[1]).toEqual({
+      id: 'owner-operator-detour',
+      title: 'Control owner -> operator',
+      status: 'attention',
+      detail: 'Se abrio operator sin pasar por owner; repite owner -> operator para validar el desvio esperado.'
+    });
+  });
+
+  it('marca en ok el cierre ACL cuando owner -> manager -> viewer termina en orden', () => {
+    expect(getAccessReviewScenarios({
+      visitedRoles: ['owner', 'manager'],
+      actorRole: 'viewer',
+      actorEmail: 'viewer@erptry.local'
+    })[2]).toEqual({
+      id: 'owner-manager-viewer-close',
+      title: 'Cierre owner -> manager -> viewer',
+      status: 'ok',
+      detail: 'Recorrido obligatorio completo y en orden: owner -> manager -> viewer.'
     });
   });
 

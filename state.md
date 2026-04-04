@@ -131,6 +131,8 @@
 - revalidada la puerta tecnica completa del workspace (`corepack pnpm typecheck`, `test`, `lint`, `build`) despues del ultimo pulido ACL para mantener `release-operable-v1` en verde mientras queda pendiente solo el repaso visual manual en navegador.
 - endurecido el `Repaso visual guiado` para incluir de forma explicita el desvio negativo `owner -> operator`: ahora la tarjeta `Perfiles demo y restricciones` exige validar que `Progreso del repaso ACL` cae en `orden: revisar` y pide reinicio desde `owner`.
 - revalidados `corepack pnpm --filter @erptry/web test -- login-panel-helpers` y `corepack pnpm --filter @erptry/web typecheck` tras este ajuste de copy/UX del repaso ACL.
+- endurecido `Progreso del repaso ACL` con tres escenarios criticos visibles (`owner -> viewer`, `owner -> operator`, `owner -> manager -> viewer`) para convertir el repaso negativo/positivo en checks accionables `ok/revisar/pendiente` antes del cierre manual.
+- alineados `apps/web/components/login-panel-helpers.test.ts`, `tasks/current.md` y `docs/release-operable-v1-validation.md` con estos escenarios ACL para mantener UX, pruebas y guion manual en el mismo lenguaje operativo.
 
 ## Pendiente inmediato
 
